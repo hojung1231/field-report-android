@@ -29,7 +29,7 @@ data class Place(val name: String, val addr: String = "", val person: String = "
 @Serializable
 data class AppData(
     val trips: List<Trip> = emptyList(), val photos: List<Photo> = emptyList(), val projects: List<String> = emptyList(),
-    val places: List<Place> = emptyList(), val currentTrip: String? = null, val myName: String = "", val myPhone: String = "",
+    val places: List<Place> = emptyList(), val currentTrip: String? = null, val myName: String = "", val myPhone: String = "", val managerUid: String? = null,
 )
 
 /** Local store: one JSON file, immutable snapshots, so every change can be undone. */
@@ -47,11 +47,19 @@ object Store {
     }
 
     fun update(change: (AppData) -> AppData) {
+        val old = data
         history.addLast(data); if (history.size > 50) history.removeFirst()
-        data = change(data); undoCount = history.size; save()
+        data = change(data); undoCount = history.size; save(); Cloud.sync(old, data)
     }
 
-    fun undo() { history.removeLastOrNull()?.let { data = it; save() }; undoCount = history.size }
+    fun undo() { val old = data; history.removeLastOrNull()?.let { data = it; save(); Cloud.sync(old, it) }; undoCount = history.size }
+
+    /** Team-shared lists arriving from the server; not an undoable user action. */
+    fun mergeShared(projects: List<String>, places: List<Place>) {
+        val d = data
+        val next = d.copy(projects = (d.projects + projects).distinct(), places = (d.places + places).distinctBy { it.name + "|" + it.person })
+        if (next != d) { data = next; save() }
+    }
 
     private fun save() { runCatching { file?.writeText(json.encodeToString(data)) } }
 

@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Store.load(applicationContext)
+        Cloud.start(applicationContext)
         enableEdgeToEdge()
         setContent { App() }
     }
@@ -80,6 +81,8 @@ fun App() {
                     0 -> HomeScreen()
                     2 -> CameraScreen()
                     3 -> TruckScreen()
+                    4 -> InboxScreen()
+                    5 -> TeamScreen()
                     else -> ComingSoon(tabs[tab].first)
                 }
             }
@@ -91,6 +94,6 @@ fun App() {
 fun ComingSoon(name: String) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("$name 탭은 아직 만들지 않았습니다", style = MaterialTheme.typography.titleMedium)
-        Text("서버와 AI 연결을 정한 뒤 추가됩니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("음성 녹음과 AI 정리를 붙일 때 추가됩니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

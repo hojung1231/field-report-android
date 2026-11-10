@@ -68,6 +68,9 @@ fun HomeScreen() {
                     Button(onClick = { shareText(ctx, notice(trip)) }, modifier = Modifier.weight(1f)) { Text("공지 공유") }
                     OutlinedButton(onClick = { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") }) { Text("복사") }
                 }
+                if (Cloud.enabled) Button(onClick = { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("팀장에게 보고 공유" + (Store.data.managerUid?.let { " · " + Cloud.nameOf(it) } ?: ""))
+                }
                 Row {
                     TextButton(onClick = { editing = trip }) { Text("수정") }
                     TextButton(onClick = { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } }) { Text(if (trip.active) "외근 종료" else "다시 진행") }
