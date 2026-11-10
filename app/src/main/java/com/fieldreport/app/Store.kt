@@ -1,0 +1,78 @@
+package com.fieldreport.app
+
+import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.UUID
+
+@Serializable
+data class Trip(
+    val id: String, val project: String = "기타", val purpose: String = "", val start: Long, val end: Long,
+    val place: String = "", val people: String = "", val active: Boolean = true,
+)
+
+/** A photo. `parent` links a detail shot (rank 2+) to the overview it belongs to. */
+@Serializable
+data class Photo(val id: String, val tripId: String, val parent: String? = null, val file: String, val at: Long, val memo: String = "")
+
+@Serializable
+data class Place(val name: String, val addr: String = "", val person: String = "", val phone: String = "")
+
+@Serializable
+data class AppData(
+    val trips: List<Trip> = emptyList(), val photos: List<Photo> = emptyList(), val projects: List<String> = emptyList(),
+    val places: List<Place> = emptyList(), val currentTrip: String? = null, val myName: String = "", val myPhone: String = "",
+)
+
+/** Local store: one JSON file, immutable snapshots, so every change can be undone. */
+object Store {
+    var data by mutableStateOf(AppData()); private set
+    var undoCount by mutableStateOf(0); private set
+    private var file: File? = null
+    private val json = Json { ignoreUnknownKeys = true }
+    private val history = ArrayDeque<AppData>()
+
+    fun load(c: Context) {
+        if (file != null) return
+        file = File(c.filesDir, "store.json")
+        file?.takeIf { it.exists() }?.let { f -> runCatching { data = json.decodeFromString<AppData>(f.readText()) } }
+    }
+
+    fun update(change: (AppData) -> AppData) {
+        history.addLast(data); if (history.size > 50) history.removeFirst()
+        data = change(data); undoCount = history.size; save()
+    }
+
+    fun undo() { history.removeLastOrNull()?.let { data = it; save() }; undoCount = history.size }
+
+    private fun save() { runCatching { file?.writeText(json.encodeToString(data)) } }
+
+    val current: Trip? get() = data.trips.firstOrNull { it.id == data.currentTrip } ?: data.trips.lastOrNull { it.active }
+}
+
+fun newId(): String = UUID.randomUUID().toString().take(12)
+
+const val MIN30 = 30 * 60_000L
+const val DAY = 86_400_000L
+
+/** Nearest 30-minute mark. */
+fun round30(t: Long): Long = (t + MIN30 / 2) / MIN30 * MIN30
+
+private fun zdt(t: Long): ZonedDateTime = Instant.ofEpochMilli(t).atZone(ZoneId.systemDefault())
+fun fDate(t: Long): String = zdt(t).let { "${it.monthValue}/${it.dayOfMonth}(${"월화수목금토일"[it.dayOfWeek.value - 1]})" }
+fun fTime(t: Long): String = zdt(t).let { "%02d:%02d".format(it.hour, it.minute) }
+fun fKoreanDateTime(t: Long): String = zdt(t).let {
+    val h = it.hour
+    "${it.monthValue}월 ${it.dayOfMonth}일(${"월화수목금토일"[it.dayOfWeek.value - 1]}) ${if (h < 12) "오전" else "오후"} ${if (h % 12 == 0) 12 else h % 12}:${"%02d".format(it.minute)}"
+}
+
+fun notice(t: Trip): String =
+    "<외근공지>\n1. 목적 : ${t.purpose}\n2. 일시 : ${fDate(t.start)} ${fTime(t.start)} ~ ${fTime(t.end)}\n3. 장소 : ${t.place}\n4. 인원 : ${t.people}"
