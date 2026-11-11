@@ -10,6 +10,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,12 +52,29 @@ fun TripTicket(t: Trip) {
         now <= t.end -> "외근 중" to Color(0xFF0E9A68)
         else -> "종료 시간 지남" to Color(0xFFB86E00)
     }
-    Column(Modifier.fillMaxWidth()) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    if (!open) {
+        // Collapsed: one thin strip with the essentials and an expand button on the right.
+        Row(Modifier.fillMaxWidth().animateContentSize().height(IntrinsicSize.Min).clip(RoundedCornerShape(18.dp)).background(c.surface).clickable { open = true }, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.fillMaxHeight().background(tone).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(status, color = Color.White, fontSize = 11.sp)
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                Text("${fTime(t.start)} → ${fTime(t.end)}", fontSize = 22.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
+                Text(t.place.ifBlank { "장소 미입력" } + " · " + t.project, fontSize = 13.sp, color = c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            IconButton(onClick = { open = true }) { Icon(Icons.Filled.ExpandMore, contentDescription = "펼쳐 보기") }
+        }
+        return
+    }
+    Column(Modifier.fillMaxWidth().animateContentSize()) {
         // Header band
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)).background(tone).padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)).background(tone).clickable { open = false }.padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("외근 승차권", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 13.sp)
             Text("  ·  $status", color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f))
             Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            IconButton(onClick = { open = false }) { Icon(Icons.Filled.ExpandLess, contentDescription = "접기", tint = Color.White) }
         }
         // Main part: departure → arrival
         Column(Modifier.fillMaxWidth().background(c.surface).padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
