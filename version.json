@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "0.7.0",
-  "notes": ["외근 장소와 용차 상·하차지에서 업체명으로 주소 검색", "외근 카드에 주소 표시, 주소로 팀 지도에 위치 표시"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-17.apk"
+  "versionCode": 18,
+  "versionName": "0.7.1",
+  "notes": ["용차 제품 크기를 3D 상자의 꼭짓점을 끌어서 조절 (170cm 사람 기준 표시)", "외근 장소와 용차 상·하차지에서 업체명으로 주소 검색"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-18.apk"
 }
