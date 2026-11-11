@@ -87,20 +87,23 @@ fun MeetingScreen() {
     val changed = if (saved != null) title != saved.title || raw != saved.raw else raw.isNotBlank()
 
     if (openId.isEmpty() || (openId != NEW && saved == null)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { open(null) }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) { Text("회의 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
+        Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("${trip.place.ifBlank { "외근" }} 회의록 ${meetings.size}건", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (meetings.isEmpty()) Text("회의 시작을 누르고 녹음하면 말하는 내용이 바로 글로 기록됩니다. 저장을 눌러야 카드로 남습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            meetings.sortedByDescending { it.at }.forEach { x ->
-                androidx.compose.runtime.key(x.id) { SwipeRightToDelete(onDelete = { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } }) {
-                    MeetingCard(x, listOf(
-                        TicketAction("이어서 녹음", Icons.Filled.Mic) { open(x) },
-                        TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.raw}") },
-                        TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.raw, "회의록을 복사했습니다") },
-                        TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } },
-                    ))
-                } }
+            // Cards scroll inside their own area so the start button stays put at the bottom, within thumb reach.
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (meetings.isEmpty()) Text("아래 회의 시작을 누르고 녹음하면 말하는 내용이 바로 글로 기록됩니다. 저장을 눌러야 카드로 남습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                meetings.sortedByDescending { it.at }.forEach { x ->
+                    androidx.compose.runtime.key(x.id) { SwipeRightToDelete(onDelete = { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } }) {
+                        MeetingCard(x, listOf(
+                            TicketAction("이어서 녹음", Icons.Filled.Mic) { open(x) },
+                            TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.raw}") },
+                            TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.raw, "회의록을 복사했습니다") },
+                            TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } },
+                        ))
+                    } }
+                }
             }
+            Button(onClick = { open(null) }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp)) { Text("회의 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
         }
         return
     }
