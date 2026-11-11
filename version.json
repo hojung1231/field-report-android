@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "0.8.1",
-  "notes": ["촬영 탭: 사진을 한 번 누르면 테두리와 메뉴(삭제 등), 한 번 더 누르면 크게 보기", "세부 사진이 있는 사진은 아래에 세부 사진이 선으로 연결되어 표시", "LLM이 사출조건 화면 사진을 판독해 썸네일에 표시"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-25.apk"
+  "versionCode": 26,
+  "versionName": "0.8.2",
+  "notes": ["외근 탭: 모든 외근이 같은 카드 모양, 새 출발 보고 버튼은 맨 아래", "지금 진행 중인 외근만 초록색, 나머지는 회색", "테두리는 회의·촬영 탭이 사용하는 외근을 표시 (카드를 눌러 선택)"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-26.apk"
 }
