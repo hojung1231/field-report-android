@@ -16,6 +16,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -57,21 +65,14 @@ fun HomeScreen() {
             Text("오늘은 어디로\n나가시나요?", fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
             Button(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text("출발 보고 작성") }
         } else {
-            TripTicket(trip)
-            SectionCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { shareText(ctx, notice(trip)) }, modifier = Modifier.weight(1f)) { Text("공지 공유") }
-                    OutlinedButton(onClick = { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") }) { Text("복사") }
-                }
-                if (Cloud.enabled) Button(onClick = { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("팀장에게 보고 공유" + (Store.data.managerUid?.let { " · " + Cloud.nameOf(it) } ?: ""))
-                }
-                Row {
-                    TextButton(onClick = { editing = trip }) { Text("수정") }
-                    TextButton(onClick = { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } }) { Text(if (trip.active) "외근 종료" else "다시 진행") }
-                    TextButton(onClick = { Store.update { d -> d.copy(trips = d.trips.filter { it.id != trip.id }, currentTrip = null) } }) { Text("삭제", color = MaterialTheme.colorScheme.error) }
-                }
-            }
+            TripTicket(trip, listOfNotNull(
+                if (Cloud.enabled) TicketAction("팀장 보고", Icons.AutoMirrored.Filled.Send) { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() } else null,
+                TicketAction("공유", Icons.Filled.Share) { shareText(ctx, notice(trip)) },
+                TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") },
+                TicketAction("수정", Icons.Filled.Edit) { editing = trip },
+                TicketAction(if (trip.active) "종료" else "재개", if (trip.active) Icons.Filled.Flag else Icons.Filled.Replay) { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } },
+                TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(trips = d.trips.filter { it.id != trip.id }, currentTrip = null) } },
+            ))
             OutlinedButton(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text("+ 새 출발 보고") }
         }
         val others = Store.data.trips.filter { it.id != trip?.id }.sortedByDescending { it.start }

@@ -27,9 +27,16 @@ data class Photo(val id: String, val tripId: String, val parent: String? = null,
 data class Place(val name: String, val addr: String = "", val person: String = "", val phone: String = "")
 
 @Serializable
+data class TeamMember(val name: String, val phone: String = "")
+
+@Serializable
+data class Meeting(val id: String, val tripId: String, val title: String, val at: Long, val raw: String = "")
+
+@Serializable
 data class AppData(
     val trips: List<Trip> = emptyList(), val photos: List<Photo> = emptyList(), val projects: List<String> = emptyList(),
     val places: List<Place> = emptyList(), val currentTrip: String? = null, val myName: String = "", val myPhone: String = "", val managerUid: String? = null,
+    val team: List<TeamMember> = emptyList(), val managerName: String? = null, val meetings: List<Meeting> = emptyList(),
 )
 
 /** Local store: one JSON file, immutable snapshots, so every change can be undone. */
@@ -53,6 +60,12 @@ object Store {
     }
 
     fun undo() { val old = data; history.removeLastOrNull()?.let { data = it; save(); Cloud.sync(old, it) }; undoCount = history.size }
+
+    /** A change that should not get its own undo step, such as each keystroke of a text field. */
+    fun edit(change: (AppData) -> AppData) { val old = data; data = change(data); save(); Cloud.sync(old, data) }
+
+    /** Marks the current state as an undo point before a run of [edit] calls. */
+    fun checkpoint() { history.addLast(data); if (history.size > 50) history.removeFirst(); undoCount = history.size }
 
     /** Team-shared lists arriving from the server; not an undoable user action. */
     fun mergeShared(projects: List<String>, places: List<Place>) {

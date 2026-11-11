@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,7 +74,9 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
     var start by remember { mutableStateOf(edit?.start ?: now) }
     var end by remember { mutableStateOf(edit?.end ?: (now + 6 * MIN30)) }
     var place by remember { mutableStateOf(edit?.place ?: "") }
-    var people by remember { mutableStateOf(edit?.people ?: Store.data.myName) }
+    var chosen by remember { mutableStateOf((edit?.people ?: Store.data.myName).split(",").map { it.trim() }.filter { it.isNotEmpty() }) }
+    var typedName by remember { mutableStateOf("") }
+    val people = chosen.joinToString(", ")
     var step by remember { mutableIntStateOf(if (edit == null) 0 else REVIEW) }
     var fromReview by remember { mutableStateOf(edit != null) }
 
@@ -88,7 +91,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
         Store.update { d ->
             d.copy(
                 trips = if (edit == null) d.trips + t else d.trips.map { if (it.id == t.id) t else it },
-                currentTrip = t.id, myName = t.people,
+                currentTrip = t.id, myName = d.myName.ifBlank { chosen.firstOrNull() ?: "" },
                 projects = if (t.project != "기타" && t.project !in d.projects) d.projects + t.project else d.projects,
             )
         }
@@ -105,13 +108,29 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     when (step) {
-                        0 -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                (DEFAULT_PROJECTS + Store.data.projects + "기타").distinct().forEach { p ->
-                                    FilterChip(selected = project == p, onClick = { project = if (project == p) "" else p }, label = { Text(p, Modifier.padding(vertical = 8.dp)) })
+                        0 -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Mine first, by how often I used each; then everything the team has entered.
+                            val used = Store.data.trips.groupingBy { it.project }.eachCount()
+                            val all = (Store.data.projects + DEFAULT_PROJECTS).distinct().filter { it != "기타" }.sortedWith(compareByDescending<String> { used[it] ?: 0 }.thenBy { it }) + "기타"
+                            val q = project.trim()
+                            val suggestion = if (q.isNotEmpty() && q !in all) all.firstOrNull { it.startsWith(q, true) } ?: all.firstOrNull { it != "기타" && it.contains(q, true) } else null
+                            VoiceField(project, { project = it }, Modifier.fillMaxWidth(), label = { Text("프로젝트명") }, singleLine = true, textStyle = MaterialTheme.typography.titleMedium)
+                            if (suggestion != null) Surface(Modifier.fillMaxWidth().clickable { project = suggestion }, shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = .12f)) {
+                                Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("추천", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                                    Text(suggestion, Modifier.weight(1f).padding(horizontal = 10.dp), fontWeight = FontWeight.SemiBold)
+                                    Text("눌러서 입력", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                                 }
                             }
-                            OutlinedTextField(if (project == "기타" || project in DEFAULT_PROJECTS + Store.data.projects) "" else project, { project = it }, Modifier.fillMaxWidth(), label = { Text("목록에 없으면 새 프로젝트명") }, singleLine = true)
+                            val shown = if (q.isEmpty() || q in all) all else all.filter { it.contains(q, true) }.ifEmpty { all }
+                            // Two rows that continue off the right edge; drag sideways for more.
+                            Column(Modifier.horizontalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                listOf(shown.filterIndexed { i, _ -> i % 2 == 0 }, shown.filterIndexed { i, _ -> i % 2 == 1 }).forEach { row ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        row.forEach { p -> FilterChip(selected = project == p, onClick = { project = if (project == p) "" else p }, label = { Text(p, Modifier.padding(vertical = 6.dp)) }) }
+                                    }
+                                }
+                            }
                         }
                         1 -> AutoFocusField(purpose, { purpose = it }, "예: 고객사 참관 T/O", lines = 5)
                         2 -> WhenStep(start, end) { s, e -> start = s; end = e }
@@ -121,7 +140,28 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                                 Store.data.trips.map { it.place }.filter { it.isNotBlank() }.distinct().takeLast(6).forEach { p -> FilterChip(place == p, { place = p }, label = { Text(p) }) }
                             }
                         }
-                        4 -> AutoFocusField(people, { people = it }, "예: 이병화 선임", lines = 1)
+                        4 -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            fun add(n: String) { val v = n.trim(); if (v.isNotEmpty() && v !in chosen) chosen = chosen + v }
+                            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = .10f)) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("외근자 ${chosen.size}명", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    if (chosen.isEmpty()) Text("아래에서 이름을 누르면 여기로 올라옵니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        chosen.forEach { n -> FilterChip(selected = true, onClick = { chosen = chosen - n }, label = { Text("$n  ✕", Modifier.padding(vertical = 6.dp)) }) }
+                                    }
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                VoiceField(typedName, { typedName = it }, Modifier.weight(1f), label = { Text("직접 입력") }, singleLine = true)
+                                OutlinedButton(onClick = { add(typedName); typedName = "" }, enabled = typedName.isNotBlank()) { Text("추가") }
+                            }
+                            val roster = (Store.data.team.map { it.name } + Store.data.myName).filter { it.isNotBlank() && it !in chosen }.distinct().sorted()
+                            Text("팀원 (이름순)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (roster.isEmpty()) Text(if (Store.data.team.isEmpty()) "등록한 팀원이 없습니다. 팀 탭에서 팀원을 등록하면 여기에 나옵니다." else "모든 팀원이 외근자로 선택됐습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                roster.forEach { n -> FilterChip(selected = false, onClick = { add(n) }, label = { Text(n, Modifier.padding(vertical = 6.dp)) }) }
+                            }
+                        }
                         else -> Column(Modifier.verticalScroll(rememberScrollState())) {
                             val rows = listOf("프로젝트" to project.ifBlank { "기타" }, "목적" to purpose, "일시" to "${fDate(start)} ${fTime(start)} ~ ${fTime(end)} (${fDuration(end - start)})", "장소" to place.ifBlank { "미입력" }, "인원" to people.ifBlank { "미입력" })
                             Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
@@ -157,7 +197,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
 private fun AutoFocusField(value: String, onChange: (String) -> Unit, hint: String, lines: Int) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    OutlinedTextField(value, onChange, Modifier.fillMaxWidth().focusRequester(focus), placeholder = { Text(hint) }, singleLine = lines == 1, minLines = lines,
+    VoiceField(value, onChange, Modifier.fillMaxWidth().focusRequester(focus), placeholder = { Text(hint) }, singleLine = lines == 1, minLines = lines,
         textStyle = MaterialTheme.typography.titleLarge, shape = RoundedCornerShape(18.dp))
 }
 

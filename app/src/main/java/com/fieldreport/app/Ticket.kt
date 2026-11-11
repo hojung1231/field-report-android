@@ -1,32 +1,31 @@
 package com.fieldreport.app
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,16 +33,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** The current trip drawn as a rail ticket: coloured header, departure → arrival, tear line, stub. */
+class TicketAction(val label: String, val icon: ImageVector, val danger: Boolean = false, val onClick: () -> Unit)
+
+/**
+ * The current trip in the shape of a rail ticket. Collapsed by default to a thin strip; the
+ * actions sit on the ticket's own bottom edge so they read as part of it.
+ */
 @Composable
-fun TripTicket(t: Trip) {
+fun TripTicket(t: Trip, actions: List<TicketAction>) {
     val c = MaterialTheme.colorScheme
     val now = System.currentTimeMillis()
     val (status, tone) = when {
@@ -53,72 +57,63 @@ fun TripTicket(t: Trip) {
         else -> "종료 시간 지남" to Color(0xFFB86E00)
     }
     var open by rememberSaveable { mutableStateOf(false) }
-    if (!open) {
-        // Collapsed: one thin strip with the essentials and an expand button on the right.
-        Row(Modifier.fillMaxWidth().animateContentSize().height(IntrinsicSize.Min).clip(RoundedCornerShape(18.dp)).background(c.surface).clickable { open = true }, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.fillMaxHeight().background(tone).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(status, color = Color.White, fontSize = 11.sp)
-            }
-            Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                Text("${fTime(t.start)} → ${fTime(t.end)}", fontSize = 22.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
-                Text(t.place.ifBlank { "장소 미입력" } + " · " + t.project, fontSize = 13.sp, color = c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            IconButton(onClick = { open = true }) { Icon(Icons.Filled.ExpandMore, contentDescription = "펼쳐 보기") }
-        }
-        return
-    }
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
-        // Header band
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)).background(tone).clickable { open = false }.padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("외근 승차권", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 13.sp)
-            Text("  ·  $status", color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f))
-            Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            IconButton(onClick = { open = false }) { Icon(Icons.Filled.ExpandLess, contentDescription = "접기", tint = Color.White) }
-        }
-        // Main part: departure → arrival
-        Column(Modifier.fillMaxWidth().background(c.surface).padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Label("출발")
-                    Text(fTime(t.start), fontSize = 38.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-1).sp)
+    Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)) {
+        if (!open) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable { open = true }, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.fillMaxHeight().background(tone).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(status, color = Color.White, fontSize = 11.sp)
                 }
-                Column(Modifier.weight(1f).padding(horizontal = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(fDuration(t.end - t.start), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tone)
-                    Canvas(Modifier.fillMaxWidth().height(14.dp)) {
-                        val y = size.height / 2; val r = 4.dp.toPx()
-                        drawLine(tone, Offset(r, y), Offset(size.width - r, y), strokeWidth = 2.dp.toPx())
-                        drawCircle(tone, r, Offset(r, y))
-                        // arrow head at the arrival end
-                        drawLine(tone, Offset(size.width - r, y), Offset(size.width - r - 7.dp.toPx(), y - 5.dp.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
-                        drawLine(tone, Offset(size.width - r, y), Offset(size.width - r - 7.dp.toPx(), y + 5.dp.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text("${fTime(t.start)} → ${fTime(t.end)}", fontSize = 22.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
+                    Text(t.place.ifBlank { "장소 미입력" } + " · " + t.project, fontSize = 13.sp, color = c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                IconButton(onClick = { open = true }) { Icon(Icons.Filled.ExpandMore, contentDescription = "펼쳐 보기") }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().background(tone).clickable { open = false }.padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(status, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                IconButton(onClick = { open = false }) { Icon(Icons.Filled.ExpandLess, contentDescription = "접기", tint = Color.White) }
+            }
+            Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column { Label("출발"); Text(fTime(t.start), fontSize = 38.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-1).sp) }
+                    Column(Modifier.weight(1f).padding(horizontal = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(fDuration(t.end - t.start), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tone)
+                        Canvas(Modifier.fillMaxWidth().height(14.dp)) {
+                            val y = size.height / 2; val r = 4.dp.toPx()
+                            drawLine(tone, Offset(r, y), Offset(size.width - r, y), strokeWidth = 2.dp.toPx())
+                            drawCircle(tone, r, Offset(r, y))
+                            drawLine(tone, Offset(size.width - r, y), Offset(size.width - r - 7.dp.toPx(), y - 5.dp.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                            drawLine(tone, Offset(size.width - r, y), Offset(size.width - r - 7.dp.toPx(), y + 5.dp.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                        }
                     }
+                    Column(horizontalAlignment = Alignment.End) { Label("종료"); Text(fTime(t.end), fontSize = 38.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-1).sp) }
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Label("종료")
-                    Text(fTime(t.end), fontSize = 38.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-1).sp)
+                Column { Label("행선지"); Text(t.place.ifBlank { "장소 미입력" }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(Modifier.weight(1.6f)) { Label("프로젝트"); Text(t.project, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                    Column(Modifier.weight(1f)) { Label("인원"); Text(t.people.ifBlank { "—" }, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 }
-            }
-            Column {
-                Label("행선지")
-                Text(t.place.ifBlank { "장소 미입력" }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(Modifier.weight(1.6f)) { Label("프로젝트"); Text(t.project, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                Column(Modifier.weight(1f)) { Label("인원"); Text(t.people.ifBlank { "—" }, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                Column { Label("목적"); Text(t.purpose.ifBlank { "—" }, fontSize = 16.sp, lineHeight = 22.sp) }
             }
         }
-        // Tear line with a punched notch at each edge
+        // Tear line with a punched notch at each edge, then the actions on the stub.
         val bg = c.background; val dash = c.outlineVariant
-        Canvas(Modifier.fillMaxWidth().height(22.dp).background(c.surface)) {
-            val y = size.height / 2; val r = 11.dp.toPx()
+        Canvas(Modifier.fillMaxWidth().height(14.dp)) {
+            val y = size.height / 2; val r = 7.dp.toPx()
             drawCircle(bg, r, Offset(0f, y)); drawCircle(bg, r, Offset(size.width, y))
-            drawLine(dash, Offset(r + 8.dp.toPx(), y), Offset(size.width - r - 8.dp.toPx(), y), strokeWidth = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f)))
+            drawLine(dash, Offset(r + 6.dp.toPx(), y), Offset(size.width - r - 6.dp.toPx(), y), strokeWidth = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
         }
-        // Stub
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp)).background(c.surface).padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 16.dp)) {
-            Label("목적")
-            Text(t.purpose.ifBlank { "—" }, fontSize = 16.sp, lineHeight = 22.sp)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(bottom = 4.dp)) {
+            actions.forEach { a ->
+                val tint = if (a.danger) c.error else c.onSurfaceVariant
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = a.onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(a.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                    Text(a.label, fontSize = 11.sp, color = tint, maxLines = 1)
+                }
+            }
         }
     }
 }

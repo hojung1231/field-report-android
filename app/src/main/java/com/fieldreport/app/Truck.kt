@@ -68,7 +68,7 @@ fun truckMessage(t: TruckForm): String {
 private fun PlaceCard(title: String?, p: Place, onChange: (Place) -> Unit) {
     SectionCard(title) {
         TextButton(onClick = { onChange(p.copy(person = Store.data.myName.ifBlank { p.person }, phone = Store.data.myPhone.ifBlank { p.phone })) }) { Text("내가 담당자") }
-        OutlinedTextField(p.name, { onChange(p.copy(name = it)) }, Modifier.fillMaxWidth(), label = { Text("업체명 (몇 글자만 쓰면 자동 완성)") }, singleLine = true)
+        VoiceField(p.name, { onChange(p.copy(name = it)) }, Modifier.fillMaxWidth(), label = { Text("업체명 (몇 글자만 쓰면 자동 완성)") }, singleLine = true)
         val q = p.name.replace(" ", "")
         if (q.isNotEmpty()) Store.data.places.filter { it.name.replace(" ", "").contains(q, true) && it != p }.take(4).forEach { s ->
             Column(Modifier.fillMaxWidth().clickable { onChange(s) }.padding(vertical = 6.dp)) {
@@ -76,10 +76,10 @@ private fun PlaceCard(title: String?, p: Place, onChange: (Place) -> Unit) {
                 Text(s.addr, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        OutlinedTextField(p.addr, { onChange(p.copy(addr = it)) }, Modifier.fillMaxWidth(), label = { Text("주소") })
+        VoiceField(p.addr, { onChange(p.copy(addr = it)) }, Modifier.fillMaxWidth(), label = { Text("주소") })
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(p.person, { onChange(p.copy(person = it)) }, Modifier.weight(1f), label = { Text("담당자") }, singleLine = true)
-            OutlinedTextField(p.phone, { onChange(p.copy(phone = it)) }, Modifier.weight(1f), label = { Text("연락처") }, singleLine = true)
+            VoiceField(p.person, { onChange(p.copy(person = it)) }, Modifier.weight(1f), label = { Text("담당자") }, singleLine = true)
+            VoiceField(p.phone, { onChange(p.copy(phone = it)) }, Modifier.weight(1f), label = { Text("연락처") }, singleLine = true)
         }
     }
 }
@@ -136,7 +136,7 @@ fun TruckScreen() {
                             TextButton(onClick = { s.set(t.copy(added = t.added - a)) }) { Text("삭제", color = MaterialTheme.colorScheme.error) }
                         }
                     }
-                    OutlinedTextField(c.item, { cargo(c.copy(item = it)) }, Modifier.fillMaxWidth(), label = { Text(if (t.added.isEmpty()) "품목" else "제품 ${t.added.size + 1} 품목") }, singleLine = true)
+                    VoiceField(c.item, { cargo(c.copy(item = it)) }, Modifier.fillMaxWidth(), label = { Text(if (t.added.isEmpty()) "품목" else "제품 ${t.added.size + 1} 품목") }, singleLine = true)
                     SectionCard("크기 (mm)") {
                         MiniStepper("가로", n(c.w), "−50", "+50", { cargo(c.copy(w = maxOf(50, c.w - 50))) }, { cargo(c.copy(w = c.w + 50)) })
                         MiniStepper("세로", n(c.d), "−50", "+50", { cargo(c.copy(d = maxOf(50, c.d - 50))) }, { cargo(c.copy(d = c.d + 50)) })
@@ -157,7 +157,7 @@ fun TruckScreen() {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         CAUTIONS.forEach { ca -> FilterChip(ca in t.cautions, { s.set(t.copy(cautions = if (ca in t.cautions) t.cautions - ca else t.cautions + ca)) }, label = { Text(ca) }) }
                     }
-                    OutlinedTextField(t.note, { s.set(t.copy(note = it)) }, Modifier.fillMaxWidth(), label = { Text("그 밖의 주의사항 (없으면 비워 두세요)") }, minLines = 2)
+                    VoiceField(t.note, { s.set(t.copy(note = it)) }, Modifier.fillMaxWidth(), label = { Text("그 밖의 주의사항 (없으면 비워 두세요)") }, minLines = 2)
                 }
                 else -> {
                     val cs = t.cargos()

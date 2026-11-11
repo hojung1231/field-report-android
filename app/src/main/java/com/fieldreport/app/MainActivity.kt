@@ -80,6 +80,7 @@ fun App() {
             Box(Modifier.padding(pad).fillMaxSize()) {
                 when (tab) {
                     0 -> HomeScreen()
+                    1 -> MeetingScreen()
                     2 -> CameraScreen()
                     3 -> TruckScreen()
                     4 -> InboxScreen()

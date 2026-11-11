@@ -2,6 +2,16 @@ package com.fieldreport.app
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.content.Intent
+import android.provider.ContactsContract.CommonDataKinds.Phone
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -73,32 +83,62 @@ private fun Offline() {
 
 @Composable
 fun TeamScreen() {
-    if (!Cloud.enabled) { Offline(); return }
+    val ctx = LocalContext.current
+    val d = Store.data
     val now = System.currentTimeMillis()
-    val out = Cloud.teamTrips.filter { it.trip.active && now < it.trip.end + DAY / 2 }.groupBy { it.owner }.mapValues { e -> e.value.minBy { it.trip.start }.trip }
-    val ids = (Cloud.users.keys + out.keys + listOfNotNull(Cloud.uid)).distinct().sortedBy { if (it in out) 0 else 1 }
-    val pins = out.entries.mapNotNull { (id, t) -> cityOf(t.place)?.let { it to Cloud.nameOf(id) } }.groupBy({ it.first }, { it.second })
-    val miss = out.filter { cityOf(it.value.place) == null }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionCard {
-            Text("지금 외근 중 ${out.size} / ${ids.size}명", fontWeight = FontWeight.Bold)
-            Text(Cloud.status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { KoreaMap(pins) }
-            if (miss.isNotEmpty()) Text("지도에 표시하지 못한 위치: " + miss.entries.joinToString(", ") { "${Cloud.nameOf(it.key)}(${it.value.place.ifBlank { "장소 미입력" }})" } + ". 장소에 시·군 이름을 넣으면 표시됩니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        ids.forEach { id ->
-            val t = out[id]; val isManager = Store.data.managerUid == id
-            SectionCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(Cloud.nameOf(id) + (if (id == Cloud.uid) " (나)" else "") + if (isManager) " · 팀장" else "", fontWeight = FontWeight.SemiBold)
-                        Text(if (t != null) "${t.place.ifBlank { "장소 미입력" }} · ${fTime(t.start)}~${fTime(t.end)} · ${t.purpose}" else "외근 일정 없음", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (id != Cloud.uid) TextButton(onClick = { Store.update { it.copy(managerUid = if (isManager) null else id) } }) { Text(if (isManager) "팀장 해제" else "팀장 지정") }
-                }
+    var newName by remember { mutableStateOf("") }
+    fun add(m: TeamMember) { val n = m.name.trim(); if (n.isNotEmpty() && d.team.none { it.name == n }) Store.update { it.copy(team = it.team + m.copy(name = n)) } }
+    // Picking a phone row returns that contact's name and number without asking for the whole address book.
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        r.data?.data?.let { uri ->
+            runCatching {
+                ctx.contentResolver.query(uri, arrayOf(Phone.DISPLAY_NAME, Phone.NUMBER), null, null, null)?.use { c -> if (c.moveToFirst()) add(TeamMember(c.getString(0) ?: "", c.getString(1) ?: "")) }
             }
         }
-        Text("이 앱을 설치하고 출발 보고를 한 번 한 사람이 목록에 나타납니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    // Who is out: everyone's trips when the server is connected, otherwise only mine.
+    val me = d.myName.ifBlank { "나" }
+    val out: Map<String, Trip> = if (Cloud.enabled)
+        Cloud.teamTrips.filter { it.trip.active && now < it.trip.end + DAY / 2 }.groupBy { Cloud.nameOf(it.owner) }.mapValues { e -> e.value.minBy { it.trip.start }.trip }
+    else d.trips.filter { it.active && now < it.end + DAY / 2 }.minByOrNull { it.start }?.let { mapOf(me to it) } ?: emptyMap()
+    val pins = out.entries.mapNotNull { (n, t) -> cityOf(t.place)?.let { it to n } }.groupBy({ it.first }, { it.second })
+    val miss = out.filter { cityOf(it.value.place) == null }
+    val roster = d.team.sortedBy { it.name }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SectionCard {
+            Text("지금 외근 중 ${out.size}명", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            if (!Cloud.enabled) Text("서버 연결 전이라 지금은 내 외근만 표시됩니다. 연결하면 팀원 위치가 함께 나옵니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { KoreaMap(pins) }
+            if (miss.isNotEmpty()) Text("지도에 표시하지 못한 위치: " + miss.entries.joinToString(", ") { "${it.key}(${it.value.place.ifBlank { "장소 미입력" }})" } + ". 장소에 시·군 이름을 넣으면 표시됩니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        SectionCard("내 이름") {
+            VoiceField(d.myName, { v -> Store.edit { it.copy(myName = v) } }, Modifier.fillMaxWidth(), placeholder = { Text("예: 이병화 선임") }, singleLine = true)
+        }
+        SectionCard("팀원 ${roster.size}명") {
+            if (roster.isEmpty()) Text("아직 등록한 팀원이 없습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            roster.forEach { m ->
+                val t = out[m.name]; val isManager = d.managerName == m.name
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(m.name + if (isManager) " · 팀장" else "", fontWeight = FontWeight.SemiBold)
+                        Text(if (t != null) "${t.place.ifBlank { "장소 미입력" }} · ${fTime(t.start)}~${fTime(t.end)}" else m.phone.ifBlank { "외근 일정 없음" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = { Store.update { it.copy(managerName = if (isManager) null else m.name) } }) { Text(if (isManager) "팀장 해제" else "팀장 지정") }
+                    TextButton(onClick = { Store.update { x -> x.copy(team = x.team - m, managerName = if (isManager) null else x.managerName) } }) { Text("삭제", color = MaterialTheme.colorScheme.error) }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                VoiceField(newName, { newName = it }, Modifier.weight(1f), label = { Text("이름으로 추가") }, singleLine = true)
+                Button(onClick = { add(TeamMember(newName)); newName = "" }, enabled = newName.isNotBlank()) { Text("추가") }
+            }
+            OutlinedButton(onClick = { runCatching { pick.launch(Intent(Intent.ACTION_PICK, Phone.CONTENT_URI)) } }, modifier = Modifier.fillMaxWidth()) { Text("휴대폰 연락처에서 가져오기") }
+            val online = Cloud.users.values.filter { n -> n.isNotBlank() && n != d.myName && d.team.none { it.name == n } }.distinct().sorted()
+            if (online.isNotEmpty()) {
+                Text("이 앱을 쓰고 있는 사람", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                online.forEach { n -> TextButton(onClick = { add(TeamMember(n)) }) { Text("+ $n") } }
+            }
+        }
     }
 }
 

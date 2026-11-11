@@ -85,7 +85,8 @@ object Cloud {
     /** Returns the message to show the user. */
     fun sendReport(t: Trip): String {
         val d = db ?: return "서버에 연결되지 않았습니다"; val me = uid ?: return "아직 로그인 중입니다"
-        val to = Store.data.managerUid ?: return "팀 탭에서 팀장을 먼저 지정해 주세요"
+        val name = Store.data.managerName ?: return "팀 탭에서 팀장을 먼저 지정해 주세요"
+        val to = users.entries.firstOrNull { it.value == name }?.key ?: return "${name}님이 아직 이 앱에 접속하지 않았습니다"
         d.collection("reports").document(newId()).set(mapOf("from" to me, "to" to to, "tripId" to t.id, "text" to notice(t), "place" to t.place, "sentAt" to System.currentTimeMillis()))
         return "${nameOf(to)}님에게 보고를 공유했습니다"
     }
