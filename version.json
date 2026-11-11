@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "0.7.6",
-  "notes": ["촬영 탭 버튼 이름을 '촬영'으로 변경"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-23.apk"
+  "versionCode": 24,
+  "versionName": "0.8.0",
+  "notes": ["회의: 마이크 버튼으로 바로 녹음, 멈추면 카드로 저장 (글 입력 화면 삭제)", "회의 카드를 길게 누르면 공유·복사·삭제 메뉴", "설정(오른쪽 위 톱니바퀴)에서 내 LLM을 연결하면 회의 미리보기를 AI가 요약"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-24.apk"
 }
