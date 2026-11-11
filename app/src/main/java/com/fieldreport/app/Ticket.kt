@@ -3,6 +3,7 @@ package com.fieldreport.app
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,27 +52,26 @@ import androidx.compose.ui.unit.sp
 class TicketAction(val label: String, val icon: ImageVector, val danger: Boolean = false, val onClick: () -> Unit)
 
 /**
- * The current trip in the shape of a rail ticket. Collapsed by default to a thin strip; tapping
- * expands it and a long press opens a menu with the actions.
+ * A trip in the shape of a rail ticket, collapsed by default to a thin strip. Tapping selects it,
+ * tapping the selected one (or the arrow) expands it, and a long press opens a menu with the actions.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TripTicket(t: Trip, actions: List<TicketAction>) {
+fun TripTicket(t: Trip, actions: List<TicketAction>, selected: Boolean = false, onSelect: () -> Unit = {}) {
     val c = MaterialTheme.colorScheme
     val now = System.currentTimeMillis()
-    val (status, tone) = when {
-        !t.active -> "종료" to c.outline
-        now < t.start -> "출발 예정" to c.primary
-        now <= t.end -> "외근 중" to Color(0xFF0E9A68)
-        else -> "종료 시간 지남" to Color(0xFFB86E00)
-    }
+    val status = when { !t.active -> "종료"; now < t.start -> "출발 예정"; now <= t.end -> "외근 중"; else -> "종료 시간 지남" }
+    // Green only for the trip happening right now; every other trip is grey.
+    val tone = if (t.active && now in t.start..t.end) Color(0xFF0E9A68) else c.outline
     var open by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     // Tap expands or collapses; a long press brings up the actions, which stay out of sight otherwise.
     Box {
+    // The outline marks the trip that the meeting and camera tabs work on. Tapping an unselected card selects it.
     Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)
-        .combinedClickable(onClick = { open = !open }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "외근 메뉴 열기")) {
+        .then(if (selected) Modifier.border(3.dp, c.primary, RoundedCornerShape(20.dp)) else Modifier)
+        .combinedClickable(onClick = { if (selected) open = !open else onSelect() }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "외근 메뉴 열기")) {
         if (!open) {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.fillMaxHeight().background(tone).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {

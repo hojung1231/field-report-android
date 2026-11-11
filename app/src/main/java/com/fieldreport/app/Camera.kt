@@ -120,7 +120,7 @@ fun CameraScreen() {
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("현장 사진 ${photos.size}장", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = c.onSurfaceVariant)
+            Text("${trip.place.ifBlank { "외근" }} 사진 ${photos.size}장", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = c.onSurfaceVariant)
             Text("한 번 누르면 선택, 한 번 더 누르면 크게 보기", style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
         }
         if (ConditionReader.lastError.isNotBlank()) Text("사출조건 판독 실패: ${ConditionReader.lastError}", color = c.error, style = MaterialTheme.typography.bodySmall)
