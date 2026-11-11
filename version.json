@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "0.4.0",
-  "notes": ["앱을 열 때 새 버전이 있으면 알려 주고 바로 설치"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-8.apk"
+  "versionCode": 9,
+  "versionName": "0.5.0",
+  "notes": ["회의 탭: 말하는 내용을 실시간으로 기록", "팀 탭: 팀원 등록, 연락처에서 가져오기, 지도", "모든 입력창에 음성 입력", "프로젝트·인원 선택 화면 개선"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-9.apk"
 }
