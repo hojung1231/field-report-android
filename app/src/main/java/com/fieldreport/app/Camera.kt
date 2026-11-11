@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -87,9 +89,8 @@ fun CameraScreen() {
     val photos = Store.data.photos.filter { it.tripId == trip.id }
     val roots = photos.filter { p -> p.parent == null || photos.none { it.id == p.parent } }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = { shoot(null) }, modifier = Modifier.fillMaxWidth()) { Text("전체 사진 촬영 (순위 1)") }
         Text("현장 사진 ${photos.size}장", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LazyVerticalGrid(GridCells.Fixed(3), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyVerticalGrid(GridCells.Fixed(3), modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items(roots, key = { it.id }) { p ->
                 Box(Modifier.aspectRatio(1f).clickable { viewing = p.id }) {
                     AsyncImage(File(dir, p.file), contentDescription = "현장 사진", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -98,6 +99,8 @@ fun CameraScreen() {
                 }
             }
         }
+        // The shutter sits at the bottom, within thumb reach; photos scroll above it.
+        Button(onClick = { shoot(null) }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) { Text("전체 사진 촬영 (순위 1)", fontSize = 17.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
     }
 
     val cur = photos.firstOrNull { it.id == viewing }
