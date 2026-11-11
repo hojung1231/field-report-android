@@ -98,10 +98,9 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "닫기") }
-                    LinearProgressIndicator(progress = { (step + 1) / 6f }, modifier = Modifier.weight(1f).height(6.dp), strokeCap = androidx.compose.ui.graphics.StrokeCap.Round)
-                    Text("${step + 1} / 6", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    StepBar(step, listOf("프로젝트", "목적", "일시", "장소", "인원", "확인"), Modifier.weight(1f))
                 }
                 Text(QUESTIONS[step], Modifier.padding(top = 20.dp, bottom = 20.dp), fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold)
                 Box(Modifier.weight(1f).fillMaxWidth()) {
