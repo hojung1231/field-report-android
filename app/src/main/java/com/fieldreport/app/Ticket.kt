@@ -127,13 +127,16 @@ fun TicketStub(actions: List<TicketAction>) {
     }
 }
 
-/** A meeting record as a card: a 200-character preview by default, the whole transcript when opened. */
+/**
+ * A meeting record as a card: a 200-character preview by default, the whole transcript when expanded
+ * with the arrow. Tapping the card itself calls [onOpen], which goes back into recording and editing.
+ */
 @Composable
-fun MeetingCard(m: Meeting, actions: List<TicketAction>) {
+fun MeetingCard(m: Meeting, actions: List<TicketAction>, onOpen: (() -> Unit)? = null) {
     val c = MaterialTheme.colorScheme
     var open by rememberSaveable(m.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)) {
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable { if (onOpen != null) onOpen() else open = !open }, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.fillMaxHeight().background(c.primary).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(fTime(m.at), color = c.onPrimary, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
                 Text("회의", color = c.onPrimary, fontSize = 11.sp)
@@ -145,7 +148,7 @@ fun MeetingCard(m: Meeting, actions: List<TicketAction>) {
             IconButton(onClick = { open = !open }) { Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (open) "접기" else "펼쳐 보기") }
         }
         // Collapsed: about 200 characters. Opened: the whole record.
-        Text((if (open) m.raw else m.preview()).ifBlank { "아직 기록된 내용이 없습니다." }, Modifier.fillMaxWidth().clickable { open = !open }.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
+        Text((if (open) m.raw else m.preview()).ifBlank { "아직 기록된 내용이 없습니다." }, Modifier.fillMaxWidth().clickable { if (onOpen != null) onOpen() else open = !open }.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
             fontSize = if (open) 15.sp else 14.sp, lineHeight = if (open) 22.sp else 20.sp, color = if (open) c.onSurface else c.onSurfaceVariant)
         TicketStub(actions)
     }

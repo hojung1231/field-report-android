@@ -15,8 +15,8 @@ android {
         applicationId = "com.fieldreport.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "0.7.2"
+        versionCode = 20
+        versionName = "0.7.3"
     }
     // Android only installs an update over an app signed with the same key, so every published
     // build must use the team's one key. Keep app/debug.keystore out of the repo and put it in
