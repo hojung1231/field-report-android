@@ -80,13 +80,18 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
     var step by remember { mutableIntStateOf(if (edit == null) 0 else REVIEW) }
     var fromReview by remember { mutableStateOf(edit != null) }
 
+    // One trip per time slot: an overlap with another card blocks moving on and saving.
+    val clash = overlappingTrip(Store.data.trips, start, end, edit?.id)
+    val clashText = clash?.let { "${fDate(it.start)} ${fTime(it.start)}~${fTime(it.end)} ${it.place.ifBlank { it.purpose }} 외근과 시간이 겹칩니다" }
     fun next() {
+        if (step == 2 && clashText != null) { Toast.makeText(ctx, clashText, Toast.LENGTH_LONG).show(); return }
         if (step == 1 && purpose.isBlank()) { Toast.makeText(ctx, "목적을 입력해 주세요", Toast.LENGTH_SHORT).show(); return }
         step = if (fromReview) REVIEW else step + 1
         if (step == REVIEW) fromReview = true
     }
     fun submit() {
         if (purpose.isBlank()) { step = 1; return }
+        if (clashText != null) { Toast.makeText(ctx, clashText, Toast.LENGTH_LONG).show(); step = 2; return }
         val t = Trip(edit?.id ?: newId(), project.trim().ifBlank { "기타" }, purpose.trim(), start, end, place.trim(), people.trim(), edit?.active ?: true)
         Store.update { d ->
             d.copy(
@@ -133,7 +138,12 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                             }
                         }
                         1 -> AutoFocusField(purpose, { purpose = it }, "예: 고객사 참관 T/O", lines = 5)
-                        2 -> WhenStep(start, end) { s, e -> start = s; end = e }
+                        2 -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (clashText != null) Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                                Text("$clashText. 시간을 바꿔 주세요.", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.SemiBold)
+                            }
+                            WhenStep(start, end) { s, e -> start = s; end = e }
+                        }
                         3 -> Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             AutoFocusField(place, { place = it }, "예: 아산공장", lines = 1)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

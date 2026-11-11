@@ -89,6 +89,9 @@ object Store {
 /** Projects every install starts with; the team list grows from here. */
 val DEFAULT_PROJECTS = listOf("bbp 페이즈3 내장트림 개발", "국책)히팅시스템", "조절식 그립핸들 개발")
 
+/** The first other trip whose time range overlaps [start, end); back-to-back trips do not overlap. */
+fun overlappingTrip(trips: List<Trip>, start: Long, end: Long, exceptId: String?): Trip? = trips.firstOrNull { it.id != exceptId && start < it.end && it.start < end }
+
 fun newId(): String = UUID.randomUUID().toString().take(12)
 
 const val MIN30 = 30 * 60_000L
