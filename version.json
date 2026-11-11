@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "0.7.3",
-  "notes": ["회의 카드를 누르면 녹음과 글 수정 화면으로 다시 들어감"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-20.apk"
+  "versionCode": 21,
+  "versionName": "0.7.4",
+  "notes": ["외근 카드를 길게 누르면 공유·복사·수정·종료·삭제 메뉴가 뜸 (카드에는 버튼이 안 보임)"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-21.apk"
 }
