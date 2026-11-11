@@ -20,7 +20,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -41,25 +43,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Meetings of the current trip: speak and it is written down live; several can be kept per trip. */
+/**
+ * Meetings of the current trip. Recording and editing happen on a draft; a card is only created
+ * or changed when the user presses save, so backing out never leaves an empty card behind.
+ */
 @Composable
 fun MeetingScreen() {
     val ctx = LocalContext.current
     val trip = Store.current
+    // "" = list, NEW = a meeting not saved yet, otherwise the id of the card being continued.
     var openId by rememberSaveable { mutableStateOf("") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var raw by rememberSaveable { mutableStateOf("") }
+    var startedAt by rememberSaveable { mutableStateOf(0L) }
     var recording by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
+    var confirmDiscard by remember { mutableStateOf(false) }
 
-    fun append(id: String, said: String) = Store.edit { d -> d.copy(meetings = d.meetings.map { if (it.id == id) it.copy(raw = (it.raw.trimEnd() + " " + said).trim()) else it }) }
     val dictation = remember {
-        Dictation(ctx.applicationContext, onFinal = { said -> if (openId.isNotEmpty()) append(openId, said) }, onPartial = { partial = it },
+        Dictation(ctx.applicationContext, onFinal = { said -> raw = (raw.trimEnd() + " " + said).trim() }, onPartial = { partial = it },
             fail = { msg -> recording = false; Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show() })
     }
     DisposableEffect(Unit) { onDispose { dictation.stop() } }
-    fun startRec() { Store.checkpoint(); recording = true; dictation.start() }
     fun stopRec() { recording = false; dictation.stop() }
     val askMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) startRec() else Toast.makeText(ctx, "마이크 권한을 허용해야 녹음할 수 있습니다", Toast.LENGTH_LONG).show()
+        if (ok) { recording = true; dictation.start() } else Toast.makeText(ctx, "마이크 권한을 허용해야 녹음할 수 있습니다", Toast.LENGTH_LONG).show()
     }
 
     if (trip == null) {
@@ -69,46 +77,54 @@ fun MeetingScreen() {
         }
         return
     }
-    val meetings = Store.data.meetings.filter { it.tripId == trip.id }.sortedBy { it.at }
-    val m = meetings.firstOrNull { it.id == openId }
+    val meetings = Store.data.meetings.filter { it.tripId == trip.id }
+    val saved = meetings.firstOrNull { it.id == openId }
+    fun open(m: Meeting?) {
+        val now = System.currentTimeMillis()
+        openId = m?.id ?: NEW; title = m?.title ?: "회의 ${meetings.size + 1} · ${fTime(now)}"; raw = m?.raw ?: ""; startedAt = m?.at ?: now
+    }
+    fun close() { stopRec(); openId = ""; confirmDiscard = false }
+    val changed = if (saved != null) title != saved.title || raw != saved.raw else raw.isNotBlank()
 
-    if (m == null) {
+    if (openId.isEmpty() || (openId != NEW && saved == null)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = {
-                val id = newId()
-                Store.update { d -> d.copy(meetings = d.meetings + Meeting(id, trip.id, "회의 ${meetings.size + 1} · ${fTime(System.currentTimeMillis())}", System.currentTimeMillis())) }
-                openId = id
-            }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) { Text("회의 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
+            Button(onClick = { open(null) }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) { Text("회의 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
             Text("${trip.place.ifBlank { "외근" }} 회의록 ${meetings.size}건", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (meetings.isEmpty()) Text("회의 시작을 누르고 녹음하면 말하는 내용이 바로 글로 기록됩니다. 한 외근에 회의록을 여러 개 만들 수 있습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (meetings.isEmpty()) Text("회의 시작을 누르고 녹음하면 말하는 내용이 바로 글로 기록됩니다. 저장을 눌러야 카드로 남습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             meetings.sortedByDescending { it.at }.forEach { x ->
-                MeetingCard(x, listOf(
-                    TicketAction("이어서 녹음", Icons.Filled.Mic) { openId = x.id },
-                    TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.raw}") },
-                    TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.raw, "회의록을 복사했습니다") },
-                    TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } },
-                ))
+                androidx.compose.runtime.key(x.id) { SwipeRightToDelete(onDelete = { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } }) {
+                    MeetingCard(x, listOf(
+                        TicketAction("이어서 녹음", Icons.Filled.Mic) { open(x) },
+                        TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.raw}") },
+                        TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.raw, "회의록을 복사했습니다") },
+                        TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } },
+                    ))
+                } }
             }
         }
         return
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { stopRec(); openId = "" }) { Text("← 저장하고 목록") }
-            OutlinedTextField(m.title, { v -> Store.edit { d -> d.copy(meetings = d.meetings.map { if (it.id == m.id) it.copy(title = v) else it }) } }, Modifier.weight(1f), singleLine = true, shape = RoundedCornerShape(14.dp))
-        }
+        OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("회의 제목") }, singleLine = true, shape = RoundedCornerShape(14.dp))
         Button(onClick = { if (recording) stopRec() else askMic.launch(Manifest.permission.RECORD_AUDIO) }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (recording) Color(0xFFE2334C) else MaterialTheme.colorScheme.primary)) {
-            Text(if (recording) "■  녹음 중 · 눌러서 완료" else "●  회의 녹음 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(if (recording) "■  녹음 중 · 눌러서 멈춤" else "●  회의 녹음 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
         Text(if (recording) partial.ifBlank { "듣고 있습니다…" } else "녹음한 내용은 아래에 쌓이고 직접 고칠 수 있습니다.", color = if (recording) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-        OutlinedTextField(m.raw, { v -> Store.edit { d -> d.copy(meetings = d.meetings.map { if (it.id == m.id) it.copy(raw = v) else it }) } }, Modifier.fillMaxWidth().weight(1f),
-            placeholder = { Text("회의 내용") }, shape = RoundedCornerShape(16.dp), readOnly = recording)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { shareText(ctx, "[${m.title}]\n${m.raw}") }) { Text("공유") }
-            TextButton(onClick = { copyText(ctx, m.raw, "회의록을 복사했습니다") }) { Text("복사") }
-            TextButton(onClick = { stopRec(); Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != m.id }) }; openId = "" }) { Text("삭제", color = MaterialTheme.colorScheme.error) }
+        OutlinedTextField(raw, { raw = it }, Modifier.fillMaxWidth().weight(1f), placeholder = { Text("회의 내용") }, shape = RoundedCornerShape(16.dp), readOnly = recording)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = { if (changed) { stopRec(); confirmDiscard = true } else close() }, modifier = Modifier.height(52.dp)) { Text("취소") }
+            Button(onClick = {
+                stopRec()
+                val m = Meeting(saved?.id ?: newId(), trip.id, title.trim().ifBlank { "회의 · ${fTime(startedAt)}" }, startedAt, raw.trim(), if (saved != null && saved.raw == raw.trim()) saved.summary else "")
+                Store.update { d -> d.copy(meetings = if (saved == null) d.meetings + m else d.meetings.map { if (it.id == m.id) m else it }) }
+                close()
+            }, enabled = raw.isNotBlank() || saved != null, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(16.dp)) { Text("저장", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
         }
     }
+    if (confirmDiscard) AlertDialog(onDismissRequest = { confirmDiscard = false }, title = { Text("저장하지 않고 닫을까요?") }, text = { Text(if (saved == null) "녹음한 내용이 사라지고 카드가 만들어지지 않습니다." else "이번에 바꾼 내용이 사라집니다.") },
+        confirmButton = { TextButton(onClick = { close() }) { Text("닫기", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("계속 작성") } })
 }
+
+private const val NEW = "new"

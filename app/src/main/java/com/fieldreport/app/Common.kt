@@ -20,6 +20,13 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape as Rounded
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -101,4 +108,17 @@ fun MiniStepper(label: String, value: String, minus: String, plus: String, onMin
         Box(Modifier.width(6.dp))
         FilledTonalButton(onClick = onPlus, contentPadding = PaddingValues(horizontal = 12.dp)) { Text(plus) }
     }
+}
+
+/** Swipe the content to the right to delete it; the red strip behind shows what will happen. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeRightToDelete(onDelete: () -> Unit, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState(confirmValueChange = { v -> if (v == SwipeToDismissBoxValue.StartToEnd) { onDelete(); true } else false })
+    SwipeToDismissBox(state, enableDismissFromEndToStart = false, backgroundContent = {
+        Row(Modifier.fillMaxSize().clip(Rounded(20.dp)).background(MaterialTheme.colorScheme.error).padding(horizontal = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onError)
+            Text("  삭제", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
+        }
+    }) { content() }
 }
