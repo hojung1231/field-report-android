@@ -87,3 +87,8 @@ fun fKoreanDateTime(t: Long): String = zdt(t).let {
 
 fun notice(t: Trip): String =
     "<외근공지>\n1. 목적 : ${t.purpose}\n2. 일시 : ${fDate(t.start)} ${fTime(t.start)} ~ ${fTime(t.end)}\n3. 장소 : ${t.place}\n4. 인원 : ${t.people}"
+
+fun fDuration(ms: Long): String { val m = ms / 60_000; return listOf(if (m >= 60) "${m / 60}시간" else "", if (m % 60 > 0) "${m % 60}분" else "").filter { it.isNotEmpty() }.joinToString(" ") }
+
+/** Whole days from today to the day of [t] in local time: 0 today, 1 tomorrow. */
+fun daysFromToday(t: Long): Long = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), Instant.ofEpochMilli(t).atZone(ZoneId.systemDefault()).toLocalDate())
