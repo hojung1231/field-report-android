@@ -149,29 +149,41 @@ fun TicketStub(actions: List<TicketAction>) {
 }
 
 /**
- * A meeting record as a card: a 200-character preview by default, the whole transcript when expanded
- * with the arrow. Tapping the card itself calls [onOpen], which goes back into recording and editing.
+ * A meeting record as a card: a preview of about 200 characters by default (the AI summary when
+ * there is one), the whole record when tapped open. A long press opens a menu with the actions.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MeetingCard(m: Meeting, actions: List<TicketAction>, onOpen: (() -> Unit)? = null) {
+fun MeetingCard(m: Meeting, actions: List<TicketAction>) {
     val c = MaterialTheme.colorScheme
     var open by rememberSaveable(m.id) { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)) {
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable { if (onOpen != null) onOpen() else open = !open }, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.fillMaxHeight().background(c.primary).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(fTime(m.at), color = c.onPrimary, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
-                Text("회의", color = c.onPrimary, fontSize = 11.sp)
+    var menu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    val summarizing = Summarizer.busy[m.id] == true
+    Box {
+        Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)
+            .combinedClickable(onClick = { open = !open }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "회의 메뉴 열기")) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.fillMaxHeight().background(c.primary).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(fTime(m.at), color = c.onPrimary, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
+                    Text("회의", color = c.onPrimary, fontSize = 11.sp)
+                }
+                Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text(m.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${fDate(m.at)} · ${m.raw.length}자 · " + when { open -> "전체"; summarizing -> "AI 요약 중…"; m.summary.isNotBlank() -> "AI 요약"; else -> "앞부분" },
+                        fontSize = 12.sp, color = if (summarizing) c.primary else c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (open) "접기" else "펼쳐 보기", modifier = Modifier.padding(end = 12.dp))
             }
-            Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                Text(m.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${fDate(m.at)} · ${m.raw.length}자" + if (open) " · 전체" else " · 미리보기", fontSize = 12.sp, color = c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            IconButton(onClick = { open = !open }) { Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (open) "접기" else "펼쳐 보기") }
+            Text((if (open) m.raw else m.preview()).ifBlank { "기록된 내용이 없습니다." }, Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 14.dp),
+                fontSize = if (open) 15.sp else 14.sp, lineHeight = if (open) 22.sp else 20.sp, color = if (open) c.onSurface else c.onSurfaceVariant)
         }
-        // Collapsed: about 200 characters. Opened: the whole record.
-        Text((if (open) m.raw else m.preview()).ifBlank { "아직 기록된 내용이 없습니다." }, Modifier.fillMaxWidth().clickable { if (onOpen != null) onOpen() else open = !open }.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
-            fontSize = if (open) 15.sp else 14.sp, lineHeight = if (open) 22.sp else 20.sp, color = if (open) c.onSurface else c.onSurfaceVariant)
-        TicketStub(actions)
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            actions.forEach { a ->
+                val tint = if (a.danger) c.error else c.onSurface
+                DropdownMenuItem(text = { Text(a.label, color = tint) }, leadingIcon = { Icon(a.icon, contentDescription = null, tint = tint) }, onClick = { menu = false; a.onClick() })
+            }
+        }
     }
 }
 

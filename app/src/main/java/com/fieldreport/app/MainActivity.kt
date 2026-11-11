@@ -18,6 +18,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,11 +61,14 @@ fun App() {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light) {
         UpdateGate()
         var tab by rememberSaveable { mutableIntStateOf(0) }
+        var settings by rememberSaveable { mutableStateOf(false) }
+        if (settings) SettingsScreen { settings = false }
         val tabs = listOf("외근" to Icons.Filled.Home, "회의" to Icons.Filled.Mic, "촬영" to Icons.Filled.PhotoCamera,
             "용차" to Icons.Filled.LocalShipping, "수신" to Icons.AutoMirrored.Filled.Send, "팀" to Icons.Filled.Groups)
         Scaffold(
             topBar = {
                 TopAppBar(title = { Text("외근 보고") }, actions = {
+                    IconButton(onClick = { settings = true }) { Icon(Icons.Filled.Settings, contentDescription = "설정") }
                     TextButton(onClick = { Store.undo() }, enabled = Store.undoCount > 0) {
                         Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
                         Text(" 실행 취소" + if (Store.undoCount > 0) " ${Store.undoCount}" else "")

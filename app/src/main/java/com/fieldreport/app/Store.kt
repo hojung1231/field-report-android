@@ -46,6 +46,8 @@ data class AppData(
     val team: List<TeamMember> = emptyList(), val managerName: String? = null, val meetings: List<Meeting> = emptyList(),
     /** Naver search API key for looking up addresses by company name; entered in the app, never in the repo. */
     val naverId: String = "", val naverSecret: String = "",
+    /** The user's own LLM for summaries: full chat endpoint URL, model name and optional key. Stays on this device. */
+    val llmUrl: String = "", val llmModel: String = "", val llmKey: String = "",
 )
 
 /** Local store: one JSON file, immutable snapshots, so every change can be undone. */

@@ -56,7 +56,7 @@ fun searchPlaces(query: String, clientId: String, clientSecret: String): List<Fo
         setRequestProperty("X-Naver-Client-Id", clientId); setRequestProperty("X-Naver-Client-Secret", clientSecret)
     }
     val code = c.responseCode
-    if (code == 401 || code == 403) error("검색 API 키가 맞지 않습니다. 팀 탭의 주소 검색 설정을 확인해 주세요.")
+    if (code == 401 || code == 403) error("검색 API 키가 맞지 않습니다. 설정의 주소 검색 키를 확인해 주세요.")
     if (code == 429) error("오늘 검색 한도를 넘었습니다.")
     if (code != 200) error("검색 서버 오류 ($code)")
     return parseNaverLocal(c.inputStream.bufferedReader().use { it.readText() })

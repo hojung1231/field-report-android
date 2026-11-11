@@ -139,11 +139,6 @@ fun TeamScreen() {
                 online.forEach { n -> TextButton(onClick = { add(TeamMember(n)) }) { Text("+ $n") } }
             }
         }
-        SectionCard("주소 검색 설정") {
-            Text("네이버 개발자센터에서 받은 검색 API의 Client ID와 Secret을 넣으면, 업체명으로 주소를 앱 안에서 바로 검색합니다. 서버에 연결되어 있으면 한 사람만 넣어도 팀 전체에 적용됩니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            androidx.compose.material3.OutlinedTextField(d.naverId, { v -> Store.edit { it.copy(naverId = v.trim()) } }, Modifier.fillMaxWidth(), label = { Text("Client ID") }, singleLine = true)
-            androidx.compose.material3.OutlinedTextField(d.naverSecret, { v -> Store.edit { it.copy(naverSecret = v.trim()) } }, Modifier.fillMaxWidth(), label = { Text("Client Secret") }, singleLine = true)
-        }
     }
 }
 
