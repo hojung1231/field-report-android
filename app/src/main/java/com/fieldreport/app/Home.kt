@@ -5,7 +5,15 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -65,23 +73,34 @@ fun HomeScreen() {
             Text("오늘은 어디로\n나가시나요?", fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
             Button(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text("출발 보고 작성") }
         } else {
-            TripTicket(trip, listOfNotNull(
-                if (Cloud.enabled) TicketAction("팀장 보고", Icons.AutoMirrored.Filled.Send) { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() } else null,
-                TicketAction("공유", Icons.Filled.Share) { shareText(ctx, notice(trip)) },
-                TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") },
-                TicketAction("수정", Icons.Filled.Edit) { editing = trip },
-                TicketAction(if (trip.active) "종료" else "재개", if (trip.active) Icons.Filled.Flag else Icons.Filled.Replay) { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } },
-                TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(trips = d.trips.filter { it.id != trip.id }, currentTrip = null) } },
-            ))
+            // The trip that meetings, photos and reports attach to is marked and outlined.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+                Text("현재 외근", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                if (Store.data.trips.size > 1) Text("· 회의와 사진이 이 외근에 저장됩니다", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Box(Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp)).padding(2.5.dp)) {
+                TripTicket(trip, listOfNotNull(
+                    if (Cloud.enabled) TicketAction("팀장 보고", Icons.AutoMirrored.Filled.Send) { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() } else null,
+                    TicketAction("공유", Icons.Filled.Share) { shareText(ctx, notice(trip)) },
+                    TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") },
+                    TicketAction("수정", Icons.Filled.Edit) { editing = trip },
+                    TicketAction(if (trip.active) "종료" else "재개", if (trip.active) Icons.Filled.Flag else Icons.Filled.Replay) { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } },
+                    TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(trips = d.trips.filter { it.id != trip.id }, currentTrip = null) } },
+                ))
+            }
             OutlinedButton(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text("+ 새 출발 보고") }
         }
         val others = Store.data.trips.filter { it.id != trip?.id }.sortedByDescending { it.start }
-        if (others.isNotEmpty()) Text("내 외근 기록", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (others.isNotEmpty()) Text("다른 외근 · 누르면 현재 외근으로 바뀝니다", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         others.forEach { t ->
             Surface(Modifier.fillMaxWidth().clickable { Store.update { it.copy(currentTrip = t.id) } }, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("${t.place.ifBlank { "장소 미입력" }} · ${t.purpose}", fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    Text("${t.project} · ${fDate(t.start)} ${fTime(t.start)} ~ ${fTime(t.end)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("${t.place.ifBlank { "장소 미입력" }} · ${t.purpose}", fontWeight = FontWeight.SemiBold, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${t.project} · ${fDate(t.start)} ${fTime(t.start)} ~ ${fTime(t.end)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(if (t.active) "전환" else "종료됨", style = MaterialTheme.typography.labelLarge, color = if (t.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                 }
             }
         }
