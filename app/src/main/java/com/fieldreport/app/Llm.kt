@@ -41,7 +41,8 @@ object Llm {
     }
 
     /** One system + user exchange. Throws with a message meant for the user. */
-    fun chat(system: String, user: String, maxTokens: Int = 400): String {
+    /** [imageDataUrl], a `data:image/jpeg;base64,…` URL, is sent with the user text for models that can see images. */
+    fun chat(system: String, user: String, maxTokens: Int = 400, imageDataUrl: String? = null): String {
         val d = Store.data; val url = d.llmUrl.trim()
         if (url.isBlank() || d.llmModel.isBlank()) error("설정에서 AI 서버 주소와 모델을 입력해 주세요.")
         if (!url.startsWith("http://") && !url.startsWith("https://")) error("AI 서버 주소는 http:// 또는 https:// 로 시작해야 합니다.")
@@ -51,7 +52,13 @@ object Llm {
             put("model", d.llmModel.trim()); put("max_tokens", maxTokens); put("temperature", 0.3); put("stream", false)
             put("messages", buildJsonArray {
                 add(buildJsonObject { put("role", "system"); put("content", system) })
-                add(buildJsonObject { put("role", "user"); put("content", user) })
+                add(buildJsonObject {
+                    put("role", "user")
+                    if (imageDataUrl == null) put("content", user) else put("content", buildJsonArray {
+                        add(buildJsonObject { put("type", "text"); put("text", user) })
+                        add(buildJsonObject { put("type", "image_url"); put("image_url", buildJsonObject { put("url", imageDataUrl) }) })
+                    })
+                })
             })
         }.toString()
         val c = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -87,6 +94,32 @@ object Summarizer {
                 busy.remove(meetingId)
                 result.onSuccess { s -> Store.edit { d -> d.copy(meetings = d.meetings.map { if (it.id == meetingId) it.copy(summary = s) else it }) } }
                     .onFailure { lastError = it.message ?: "요약하지 못했습니다. 인터넷 연결을 확인해 주세요." }
+            }
+        }
+    }
+}
+
+/** A yes/no answer from the model: true only when it clearly says yes. */
+fun saysYes(answer: String): Boolean = answer.trim().lowercase().let { a -> (a.startsWith("yes") || a.startsWith("예") || a.startsWith("네") || a.startsWith("맞")) && !a.startsWith("no") }
+
+/** Asks the LLM whether a photo shows injection-moulding conditions on a machine display, and marks it. */
+object ConditionReader {
+    val busy = mutableStateMapOf<String, Boolean>()
+    var lastError by mutableStateOf(""); private set
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private const val SYSTEM = "제조 현장 사진을 분류한다. 한 단어로만 답한다."
+    private const val ASK = "이 사진이 사출성형기의 조작 디스플레이(화면)에 표시된 사출 조건(온도, 압력, 속도, 보압, 계량, 시간 등의 설정값)을 찍은 것이면 YES, 제품·금형·설비 외관·불량 부위 등 그 밖의 사진이면 NO 라고만 답하세요."
+
+    fun read(photoId: String, dir: java.io.File) {
+        val p = Store.data.photos.firstOrNull { it.id == photoId } ?: return
+        if (!Llm.configured || busy[photoId] == true) return
+        busy[photoId] = true; lastError = ""
+        scope.launch {
+            val result = runCatching { saysYes(Llm.chat(SYSTEM, ASK, 60, PhotoRender.smallJpegDataUrl(java.io.File(dir, p.original ?: p.file), 1024))) }
+            withContext(Dispatchers.Main) {
+                busy.remove(photoId)
+                result.onSuccess { yes -> Store.edit { d -> d.copy(photos = d.photos.map { if (it.id == photoId) it.copy(cond = yes) else it }) } }
+                    .onFailure { lastError = it.message ?: "사진을 판독하지 못했습니다." }
             }
         }
     }

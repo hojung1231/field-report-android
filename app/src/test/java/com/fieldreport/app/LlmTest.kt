@@ -17,3 +17,10 @@ class LlmTest {
         assertEquals("", Llm.parseChatResponse("not json", false)); assertEquals("", Llm.parseChatResponse("""{"error":"x"}""", false))
     }
 }
+
+class YesNoTest {
+    @org.junit.Test fun onlyAClearYesMarksAPhoto() {
+        listOf("YES", "yes.", " Yes", "예", "네, 사출 조건 화면입니다").forEach { org.junit.Assert.assertTrue(it, saysYes(it)) }
+        listOf("NO", "no", "아니오", "", "Not sure", "모르겠습니다").forEach { org.junit.Assert.assertFalse(it, saysYes(it)) }
+    }
+}

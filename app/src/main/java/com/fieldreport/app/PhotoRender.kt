@@ -34,6 +34,15 @@ object PhotoRender {
         return if (rotation(file) % 180 == 0) w to h else h to w
     }
 
+    /** A reduced copy of the photo as a data URL, small enough to send to an LLM. */
+    fun smallJpegDataUrl(file: File, maxSide: Int): String {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeFile(file.path, bounds)
+        var sample = 1; while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
+        val bmp = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("사진을 열 수 없습니다")
+        val out = java.io.ByteArrayOutputStream(); bmp.compress(Bitmap.CompressFormat.JPEG, 80, out); bmp.recycle()
+        return "data:image/jpeg;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+    }
+
     private fun decodeUpright(file: File, sample: Int): Bitmap {
         val o = BitmapFactory.Options().apply { inMutable = true; inPreferredConfig = Bitmap.Config.ARGB_8888; inSampleSize = sample }
         var bmp = BitmapFactory.decodeFile(file.path, o) ?: error("원본 사진을 열 수 없습니다")

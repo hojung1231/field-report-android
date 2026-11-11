@@ -25,6 +25,8 @@ data class Photo(
     val id: String, val tripId: String, val parent: String? = null, val file: String, val at: Long, val memo: String = "",
     /** The untouched first original once the photo has been edited; [file] is then the rendered result. */
     val original: String? = null, val annotations: List<Annotation> = emptyList(),
+    /** True when the photo shows moulding conditions on an injection machine's display. */
+    val cond: Boolean = false,
 )
 
 @Serializable
