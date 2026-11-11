@@ -20,7 +20,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +39,34 @@ const val VENDOR_NAME = "삼삼화물"
 const val VENDOR_SMS = "010-9206-3355"
 const val VENDOR_TEL = "052-283-3300"
 const val KG_PER_PERSON = 20
-val CARS = listOf("다마스", "라보", "1톤", "1.4톤", "2.5톤", "3.5톤", "5톤")
+/**
+ * Cargo bed of a stock truck in mm and its payload in kg. Figures commonly quoted by Korean
+ * freight services; they differ a little between sources and models, and open beds have no fixed
+ * height, so [h] is a practical loading height. Used only to suggest a size.
+ */
+class Car(val name: String, val l: Int, val w: Int, val h: Int, val kg: Int)
+val CAR_SPECS = listOf(
+    Car("다마스", 1600, 1100, 1100, 400), Car("라보", 2200, 1400, 1300, 500), Car("1톤", 2850, 1600, 1800, 1000), Car("1.4톤", 3100, 1700, 1800, 1400),
+    Car("2.5톤", 4300, 1800, 2000, 2500), Car("3.5톤", 4600, 2050, 2000, 3500), Car("5톤", 6200, 2300, 2300, 5000),
+)
+val CARS = CAR_SPECS.map { it.name }
+
+fun Cargo.weightKg() = if (byPeople) people * KG_PER_PERSON else kg
+
+/** Why [car] cannot take [cargos], or null if it can. */
+fun carProblem(car: Car, cargos: List<Cargo>): String? {
+    val total = cargos.sumOf { it.weightKg() }
+    if (total > car.kg) return "중량 초과 (${total}kg > ${car.kg}kg)"
+    cargos.forEach { c ->
+        val long = maxOf(c.w, c.d); val short = minOf(c.w, c.d)
+        if (long > car.l || short > car.w) return "바닥 크기 초과"
+        if (c.h > car.h) return "높이 초과"
+    }
+    // Several items: leave some slack because boxes never pack perfectly.
+    if (cargos.size > 1 && cargos.sumOf { it.w.toLong() * it.d } > car.l.toLong() * car.w * 85 / 100) return "여러 제품을 함께 싣기에 바닥이 부족"
+    return null
+}
+fun recommendCar(cargos: List<Cargo>): Car? = CAR_SPECS.firstOrNull { carProblem(it, cargos) == null }
 val CAUTIONS = listOf("우천 시 젖지 않도록 방수 필수", "운송 중 전도 및 파손 방지 필요", "위에 다른 화물 적재 금지", "지게차 상·하차 필요", "충격 주의")
 
 data class Cargo(val item: String = "", val w: Int = 1000, val d: Int = 1000, val h: Int = 1000, val byPeople: Boolean = false, val kg: Int = 100, val people: Int = 2)
@@ -45,7 +74,7 @@ data class TruckForm(
     val at: Long = round30(System.currentTimeMillis() + 3_600_000), val car: String = "1톤",
     val from: Place = Place(""), val to: Place = Place(""),
     val added: List<Cargo> = emptyList(), val draft: Cargo = Cargo(),
-    val cautions: List<String> = emptyList(), val note: String = "",
+    val cautions: List<String> = emptyList(), val note: String = "", val carManual: Boolean = false,
 )
 
 private fun n(v: Int) = NumberFormat.getIntegerInstance().format(v)
@@ -95,9 +124,9 @@ object TruckState {
     fun undo() { if (history.isNotEmpty()) form = history.removeLast(); canUndo = history.isNotEmpty() }
 }
 
-private val TRUCK_STEPS = listOf("일정", "상차지", "하차지", "제품", "주의사항", "확인")
-private val TRUCK_QUESTIONS = listOf("언제, 어떤 차로 보낼까요?", "어디에서 싣나요?", "어디에 내리나요?", "무엇을 보내나요?", "주의할 점이 있나요?", "이대로 보낼까요?")
-private const val TRUCK_REVIEW = 5
+private val TRUCK_STEPS = listOf("일정", "상차지", "하차지", "제품", "차량", "주의", "확인")
+private val TRUCK_QUESTIONS = listOf("언제 보낼까요?", "어디에서 싣나요?", "어디에 내리나요?", "무엇을 보내나요?", "어떤 차로 보낼까요?", "주의할 점이 있나요?", "이대로 보낼까요?")
+private const val TRUCK_REVIEW = 6
 
 /** One question per screen, ending in a preview whose rows jump back to edit. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -121,8 +150,6 @@ fun TruckScreen() {
                 0 -> {
                     DateRow(t.at) { d -> s.set(t.copy(at = t.at + d)) }
                     SectionCard { MiniStepper("출발", fTime(t.at), "−30분", "+30분", { s.set(t.copy(at = t.at - MIN30)) }, { s.set(t.copy(at = t.at + MIN30)) }) }
-                    Text("차량", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { CARS.forEach { car -> FilterChip(t.car == car, { s.set(t.copy(car = car)) }, label = { Text(car) }) } }
                 }
                 1 -> PlaceCard(null, t.from) { s.set(t.copy(from = it)) }
                 2 -> {
@@ -154,6 +181,27 @@ fun TruckScreen() {
                     Text("제품이 하나뿐이면 추가를 누르지 않고 다음으로 넘어가세요.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 4 -> {
+                    val cs = t.cargos(); val rec = recommendCar(cs)
+                    // Follow the recommendation until the user picks a car themselves.
+                    LaunchedEffect(rec?.name, t.carManual) { if (!t.carManual && rec != null && t.car != rec.name) s.form = s.form.copy(car = rec.name) }
+                    Text("제품 ${cs.size}개 · 총 약 ${n(cs.sumOf { it.weightKg() })}kg · 가장 큰 제품 ${cs.maxOf { maxOf(it.w, it.d) }.let { n(it) }}mm", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (rec == null) Text("5톤에도 싣기 어려운 크기·중량입니다. 업체와 전화로 상의하세요.", color = MaterialTheme.colorScheme.error)
+                    CAR_SPECS.forEach { car ->
+                        val problem = carProblem(car, cs); val picked = t.car == car.name
+                        Surface(Modifier.fillMaxWidth().clickable { s.set(t.copy(car = car.name, carManual = true)) }, shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            color = if (picked) MaterialTheme.colorScheme.primary.copy(alpha = .14f) else MaterialTheme.colorScheme.surface) {
+                            Row(Modifier.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(car.name + if (car.name == rec?.name) "  · 추천" else "", fontWeight = FontWeight.Bold, color = if (car.name == rec?.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                    Text("적재함 ${n(car.l)}×${n(car.w)}mm · ${n(car.kg)}kg" + (problem?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodySmall, color = if (problem != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (picked) Text("선택됨", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
+                    Text("적재함 크기와 적재중량은 용달 업체들이 흔히 안내하는 순정 차량 기준의 대략값입니다. 차종·연식에 따라 다를 수 있습니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                5 -> {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         CAUTIONS.forEach { ca -> FilterChip(ca in t.cautions, { s.set(t.copy(cautions = if (ca in t.cautions) t.cautions - ca else t.cautions + ca)) }, label = { Text(ca) }) }
                     }
@@ -162,10 +210,11 @@ fun TruckScreen() {
                 else -> {
                     val cs = t.cargos()
                     val rows = listOf(
-                        "일정" to "${fKoreanDateTime(t.at)} · ${t.car}",
+                        "일정" to fKoreanDateTime(t.at),
                         "상차지" to listOf(t.from.name, t.from.person).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "미입력" },
                         "하차지" to listOf(t.to.name, t.to.person).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "미입력" },
                         "제품" to cs.joinToString(", ") { it.item.ifBlank { "품목 미입력" } } + " (${cs.size}개)",
+                        "차량" to t.car + if (!t.carManual && recommendCar(cs)?.name == t.car) " (추천)" else "",
                         "주의사항" to (t.cautions + t.note.trim()).filter { it.isNotBlank() }.joinToString(", ").ifBlank { "없음" },
                     )
                     SectionCard {
