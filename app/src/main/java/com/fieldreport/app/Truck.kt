@@ -123,6 +123,8 @@ object TruckState {
     private val history = ArrayDeque<TruckForm>()
     fun set(next: TruckForm) { history.addLast(form); if (history.size > 80) history.removeFirst(); form = next; canUndo = true }
     fun undo() { if (history.isNotEmpty()) form = history.removeLast(); canUndo = history.isNotEmpty() }
+    /** Marks the current form as an undo point before a run of direct changes, such as a drag. */
+    fun checkpoint() { history.addLast(form); if (history.size > 80) history.removeFirst(); canUndo = true }
 }
 
 private val TRUCK_STEPS = listOf("일정", "상차지", "하차지", "제품", "차량", "주의", "확인")
@@ -166,6 +168,9 @@ fun TruckScreen() {
                     }
                     VoiceField(c.item, { cargo(c.copy(item = it)) }, Modifier.fillMaxWidth(), label = { Text(if (t.added.isEmpty()) "품목" else "제품 ${t.added.size + 1} 품목") }, singleLine = true)
                     SectionCard("크기 (mm)") {
+                        // Drag a corner handle to size the box; the whole drag is one undo step.
+                        CargoBox(c, onDragStart = { s.checkpoint() }) { next -> s.form = s.form.copy(draft = next) }
+                        Text("파란 손잡이를 끌어 가로·세로·높이를 조절하세요 (50mm 단위). 아래 버튼으로 미세 조정할 수 있습니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         MiniStepper("가로", n(c.w), "−50", "+50", { cargo(c.copy(w = maxOf(50, c.w - 50))) }, { cargo(c.copy(w = c.w + 50)) })
                         MiniStepper("세로", n(c.d), "−50", "+50", { cargo(c.copy(d = maxOf(50, c.d - 50))) }, { cargo(c.copy(d = c.d + 50)) })
                         MiniStepper("높이", n(c.h), "−50", "+50", { cargo(c.copy(h = maxOf(50, c.h - 50))) }, { cargo(c.copy(h = c.h + 50)) })
