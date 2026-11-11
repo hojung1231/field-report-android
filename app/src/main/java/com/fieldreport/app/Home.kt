@@ -110,7 +110,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                 Row { TextButton(onClick = onClose) { Text("← 닫기") }; Text("출발 보고", Modifier.padding(start = 8.dp, top = 12.dp), fontWeight = FontWeight.Bold) }
                 SectionCard("프로젝트") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        (Store.data.projects + "기타").distinct().forEach { p -> FilterChip(selected = project == p, onClick = { project = if (project == p) "" else p }, label = { Text(p) }) }
+                        (DEFAULT_PROJECTS + Store.data.projects + "기타").distinct().forEach { p -> FilterChip(selected = project == p, onClick = { project = if (project == p) "" else p }, label = { Text(p) }) }
                     }
                     OutlinedTextField(if (project == "기타") "" else project, { project = it }, Modifier.fillMaxWidth(), label = { Text("새 프로젝트명") }, singleLine = true)
                 }

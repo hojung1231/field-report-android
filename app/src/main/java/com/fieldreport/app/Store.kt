@@ -66,6 +66,9 @@ object Store {
     val current: Trip? get() = data.trips.firstOrNull { it.id == data.currentTrip } ?: data.trips.lastOrNull { it.active }
 }
 
+/** Projects every install starts with; the team list grows from here. */
+val DEFAULT_PROJECTS = listOf("bbp 페이즈3 내장트림 개발", "국책)히팅시스템", "조절식 그립핸들 개발")
+
 fun newId(): String = UUID.randomUUID().toString().take(12)
 
 const val MIN30 = 30 * 60_000L
