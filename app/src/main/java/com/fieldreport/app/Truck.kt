@@ -106,6 +106,7 @@ private fun PlaceCard(title: String?, p: Place, onChange: (Place) -> Unit) {
             }
         }
         VoiceField(p.addr, { onChange(p.copy(addr = it)) }, Modifier.fillMaxWidth(), label = { Text("주소") })
+        PlaceSearch(p.name) { f -> onChange(p.copy(name = f.name, addr = f.address)) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             VoiceField(p.person, { onChange(p.copy(person = it)) }, Modifier.weight(1f), label = { Text("담당자") }, singleLine = true)
             VoiceField(p.phone, { onChange(p.copy(phone = it)) }, Modifier.weight(1f), label = { Text("연락처") }, singleLine = true)

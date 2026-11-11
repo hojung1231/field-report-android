@@ -16,7 +16,7 @@ import java.util.UUID
 @Serializable
 data class Trip(
     val id: String, val project: String = "기타", val purpose: String = "", val start: Long, val end: Long,
-    val place: String = "", val people: String = "", val active: Boolean = true,
+    val place: String = "", val people: String = "", val active: Boolean = true, val addr: String = "",
 )
 
 /** A photo. `parent` links a detail shot (rank 2+) to the overview it belongs to. */
@@ -44,6 +44,8 @@ data class AppData(
     val trips: List<Trip> = emptyList(), val photos: List<Photo> = emptyList(), val projects: List<String> = emptyList(),
     val places: List<Place> = emptyList(), val currentTrip: String? = null, val myName: String = "", val myPhone: String = "", val managerUid: String? = null,
     val team: List<TeamMember> = emptyList(), val managerName: String? = null, val meetings: List<Meeting> = emptyList(),
+    /** Naver search API key for looking up addresses by company name; entered in the app, never in the repo. */
+    val naverId: String = "", val naverSecret: String = "",
 )
 
 /** Local store: one JSON file, immutable snapshots, so every change can be undone. */

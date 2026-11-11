@@ -74,6 +74,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
     var start by remember { mutableStateOf(edit?.start ?: now) }
     var end by remember { mutableStateOf(edit?.end ?: (now + 6 * MIN30)) }
     var place by remember { mutableStateOf(edit?.place ?: "") }
+    var addr by remember { mutableStateOf(edit?.addr ?: "") }
     var chosen by remember { mutableStateOf((edit?.people ?: Store.data.myName).split(",").map { it.trim() }.filter { it.isNotEmpty() }) }
     var typedName by remember { mutableStateOf("") }
     val people = chosen.joinToString(", ")
@@ -92,7 +93,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
     fun submit() {
         if (purpose.isBlank()) { step = 1; return }
         if (clashText != null) { Toast.makeText(ctx, clashText, Toast.LENGTH_LONG).show(); step = 2; return }
-        val t = Trip(edit?.id ?: newId(), project.trim().ifBlank { "기타" }, purpose.trim(), start, end, place.trim(), people.trim(), edit?.active ?: true)
+        val t = Trip(edit?.id ?: newId(), project.trim().ifBlank { "기타" }, purpose.trim(), start, end, place.trim(), people.trim(), edit?.active ?: true, addr.trim())
         Store.update { d ->
             d.copy(
                 trips = if (edit == null) d.trips + t else d.trips.map { if (it.id == t.id) t else it },
@@ -144,8 +145,10 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                             }
                             WhenStep(start, end) { s, e -> start = s; end = e }
                         }
-                        3 -> Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            AutoFocusField(place, { place = it }, "예: 아산공장", lines = 1)
+                        3 -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AutoFocusField(place, { place = it }, "업체명 또는 장소 (예: 아산공장)", lines = 1)
+                            VoiceField(addr, { addr = it }, Modifier.fillMaxWidth(), label = { Text("주소 (선택)") })
+                            PlaceSearch(place) { p -> place = p.name; addr = p.address }
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Store.data.trips.map { it.place }.filter { it.isNotBlank() }.distinct().takeLast(6).forEach { p -> FilterChip(place == p, { place = p }, label = { Text(p) }) }
                             }
@@ -173,7 +176,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                             }
                         }
                         else -> Column(Modifier.verticalScroll(rememberScrollState())) {
-                            val rows = listOf("프로젝트" to project.ifBlank { "기타" }, "목적" to purpose, "일시" to "${fDate(start)} ${fTime(start)} ~ ${fTime(end)} (${fDuration(end - start)})", "장소" to place.ifBlank { "미입력" }, "인원" to people.ifBlank { "미입력" })
+                            val rows = listOf("프로젝트" to project.ifBlank { "기타" }, "목적" to purpose, "일시" to "${fDate(start)} ${fTime(start)} ~ ${fTime(end)} (${fDuration(end - start)})", "장소" to (place.ifBlank { "미입력" } + if (addr.isBlank()) "" else "\n$addr"), "인원" to people.ifBlank { "미입력" })
                             Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
                                 Column {
                                     rows.forEachIndexed { i, (label, value) ->

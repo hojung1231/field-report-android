@@ -91,7 +91,10 @@ fun TripTicket(t: Trip, actions: List<TicketAction>) {
                     }
                     Column(horizontalAlignment = Alignment.End) { Label("종료"); Text(fTime(t.end), fontSize = 38.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-1).sp) }
                 }
-                Column { Label("행선지"); Text(t.place.ifBlank { "장소 미입력" }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                Column {
+                    Label("행선지"); Text(t.place.ifBlank { "장소 미입력" }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (t.addr.isNotBlank()) Text(t.addr, fontSize = 13.sp, color = c.onSurfaceVariant)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(Modifier.weight(1.6f)) { Label("프로젝트"); Text(t.project, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                     Column(Modifier.weight(1f)) { Label("인원"); Text(t.people.ifBlank { "—" }, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }

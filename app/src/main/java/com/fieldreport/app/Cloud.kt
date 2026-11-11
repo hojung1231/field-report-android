@@ -47,12 +47,17 @@ object Cloud {
         val d = db ?: return
         d.collection("trips").addSnapshotListener { snap, _ ->
             if (snap != null) teamTrips = snap.documents.map {
-                TeamTrip(Trip(it.id, it.s("project").ifBlank { "기타" }, it.s("purpose"), it.getLong("start") ?: 0, it.getLong("end") ?: 0, it.s("place"), it.s("people"), it.getBoolean("active") ?: false), it.s("owner"))
+                TeamTrip(Trip(it.id, it.s("project").ifBlank { "기타" }, it.s("purpose"), it.getLong("start") ?: 0, it.getLong("end") ?: 0, it.s("place"), it.s("people"), it.getBoolean("active") ?: false, it.s("addr")), it.s("owner"))
             }
         }
         d.collection("users").addSnapshotListener { snap, _ -> if (snap != null) users = snap.documents.associate { it.id to it.s("name") } }
         d.collection("reports").addSnapshotListener { snap, _ ->
             if (snap != null) reports = snap.documents.map { Report(it.id, it.s("from"), it.s("to"), it.s("text"), it.s("place"), it.getLong("sentAt") ?: 0) }.sortedByDescending { it.sentAt }
+        }
+        // The address-search key is shared with the team here, so only one person has to enter it.
+        d.collection("config").document("search").addSnapshotListener { snap, _ ->
+            val id = snap?.getString("naverId").orEmpty(); val secret = snap?.getString("naverSecret").orEmpty()
+            if (id.isNotBlank() && secret.isNotBlank() && (id != Store.data.naverId || secret != Store.data.naverSecret)) Store.edit { it.copy(naverId = id, naverSecret = secret) }
         }
         var projects = listOf<String>(); var places = listOf<Place>()
         d.collection("projects").addSnapshotListener { snap, _ -> if (snap != null) { projects = snap.documents.map { it.s("name") }.filter { it.isNotBlank() }; Store.mergeShared(projects, places) } }
@@ -60,7 +65,7 @@ object Cloud {
     }
 
     private fun key(s: String) = s.replace(Regex("[/.#\\[\\]*\\s]"), "_").take(120).ifBlank { "_" }
-    private fun tripDoc(t: Trip, me: String) = mapOf("owner" to me, "project" to t.project, "purpose" to t.purpose, "start" to t.start, "end" to t.end, "place" to t.place, "people" to t.people, "active" to t.active)
+    private fun tripDoc(t: Trip, me: String) = mapOf("owner" to me, "project" to t.project, "purpose" to t.purpose, "start" to t.start, "end" to t.end, "place" to t.place, "addr" to t.addr, "people" to t.people, "active" to t.active)
     private fun pushPlace(p: Place) = db?.collection("places")?.document(key(p.name + "|" + p.person))?.set(mapOf("name" to p.name, "addr" to p.addr, "person" to p.person, "phone" to p.phone))
 
     private fun pushAll() {
@@ -79,6 +84,7 @@ object Cloud {
         old.trips.filter { o -> new.trips.none { it.id == o.id } }.forEach { d.collection("trips").document(it.id).delete() }
         (new.projects - old.projects.toSet()).forEach { d.collection("projects").document(key(it)).set(mapOf("name" to it)) }
         (new.places - old.places.toSet()).forEach { pushPlace(it) }
+        if ((new.naverId != old.naverId || new.naverSecret != old.naverSecret) && new.naverId.isNotBlank() && new.naverSecret.isNotBlank()) d.collection("config").document("search").set(mapOf("naverId" to new.naverId, "naverSecret" to new.naverSecret))
         if (new.myName != old.myName && new.myName.isNotBlank()) d.collection("users").document(me).set(mapOf("name" to new.myName))
     }
 
