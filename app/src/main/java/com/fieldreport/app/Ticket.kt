@@ -78,8 +78,9 @@ fun TripTicket(t: Trip, actions: List<TicketAction>) {
                     Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Text(status, color = Color.White, fontSize = 11.sp)
                 }
-                Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    Text("${fTime(t.start)} → ${fTime(t.end)}", fontSize = 22.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
+                Column(Modifier.weight(1f).padding(start = 12.dp, top = 8.dp, bottom = 8.dp)) {
+                    // Always one line: the font is sized to fit a narrow phone, and wrapping is off.
+                    Text("${fTime(t.start)}→${fTime(t.end)}", fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp, maxLines = 1, softWrap = false)
                     Text(t.place.ifBlank { "장소 미입력" } + " · " + t.project, fontSize = 13.sp, color = c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 IconButton(onClick = { open = true }) { Icon(Icons.Filled.ExpandMore, contentDescription = "펼쳐 보기") }
