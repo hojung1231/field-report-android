@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "0.7.4",
-  "notes": ["외근 카드를 길게 누르면 공유·복사·수정·종료·삭제 메뉴가 뜸 (카드에는 버튼이 안 보임)"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-21.apk"
+  "versionCode": 22,
+  "versionName": "0.7.5",
+  "notes": ["외근 카드를 길게 누르면 공유·복사·수정·종료·삭제 메뉴가 뜸", "접힌 외근 카드의 출발·종료 시간이 한 줄로 표시"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-22.apk"
 }
