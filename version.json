@@ -1,0 +1,6 @@
+{
+  "versionCode": 8,
+  "versionName": "0.4.0",
+  "notes": ["앱을 열 때 새 버전이 있으면 알려 주고 바로 설치"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-8.apk"
+}
