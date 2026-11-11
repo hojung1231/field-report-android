@@ -55,18 +55,18 @@ fun SectionCard(title: String? = null, content: @Composable () -> Unit) {
     }
 }
 
-/** Segmented progress bar: one segment per step, with "n단계 / 총 m단계" and the step's name under it. */
+/** Segmented progress bar with each step's name written inside its segment. */
 @Composable
 fun StepBar(step: Int, labels: List<String>, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            labels.indices.forEach { i ->
-                Box(Modifier.weight(1f).height(if (i == step) 8.dp else 6.dp).clip(CircleShape).background(if (i <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant))
+    val c = MaterialTheme.colorScheme
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        labels.forEachIndexed { i, label ->
+            val bg = when { i == step -> c.primary; i < step -> c.primary.copy(alpha = .22f); else -> c.surfaceVariant }
+            val fg = when { i == step -> c.onPrimary; i < step -> c.primary; else -> c.onSurfaceVariant }
+            // Wider segments for longer names so every label fits on one line.
+            Box(Modifier.weight(label.length + 1.5f).height(28.dp).clip(CircleShape).background(bg), contentAlignment = Alignment.Center) {
+                Text(label, color = fg, fontSize = 11.sp, fontWeight = if (i == step) FontWeight.Bold else FontWeight.Medium, maxLines = 1, softWrap = false)
             }
-        }
-        Row {
-            Text("${step + 1}단계 / 총 ${labels.size}단계", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Text("  ·  ${labels[step]}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
