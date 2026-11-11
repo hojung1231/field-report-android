@@ -1,6 +1,6 @@
 {
-  "versionCode": 14,
-  "versionName": "0.6.4",
-  "notes": ["회의 시작 버튼과 사진 촬영 버튼을 화면 아래에 고정", "회의 카드와 사진 목록은 버튼 위에서 스크롤"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-14.apk"
+  "versionCode": 15,
+  "versionName": "0.6.5",
+  "notes": ["이름을 직접 입력하고 엔터를 누르면 바로 추가"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-15.apk"
 }
