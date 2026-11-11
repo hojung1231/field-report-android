@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "0.6.1",
-  "notes": ["회의록이 카드로 저장되고 200자 미리보기 제공", "사진 편집 화면을 앱 디자인에 맞게 변경"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-11.apk"
+  "versionCode": 12,
+  "versionName": "0.6.2",
+  "notes": ["회의는 저장을 눌러야 카드로 남음 (빈 카드 안 생김)", "회의 카드를 오른쪽으로 밀어 삭제"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-12.apk"
 }
