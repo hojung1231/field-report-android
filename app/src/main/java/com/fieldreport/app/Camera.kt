@@ -100,7 +100,7 @@ fun CameraScreen() {
             }
         }
         // The shutter sits at the bottom, within thumb reach; photos scroll above it.
-        Button(onClick = { shoot(null) }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) { Text("전체 사진 촬영 (순위 1)", fontSize = 17.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
+        Button(onClick = { shoot(null) }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) { Text("촬영", fontSize = 17.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
     }
 
     val cur = photos.firstOrNull { it.id == viewing }
