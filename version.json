@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "0.6.2",
-  "notes": ["회의는 저장을 눌러야 카드로 남음 (빈 카드 안 생김)", "회의 카드를 오른쪽으로 밀어 삭제"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-12.apk"
+  "versionCode": 13,
+  "versionName": "0.6.3",
+  "notes": ["회의 시작 버튼을 화면 아래에 고정, 회의 카드는 그 위에서 스크롤"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-13.apk"
 }
