@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "0.6.0",
-  "notes": ["사진 편집: 원·사각형·화살표 표시, 원본 화질로 저장", "용차: 제품 입력 뒤 차량 추천", "단계 막대를 눌러 이전 단계로 이동"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-10.apk"
+  "versionCode": 11,
+  "versionName": "0.6.1",
+  "notes": ["회의록이 카드로 저장되고 200자 미리보기 제공", "사진 편집 화면을 앱 디자인에 맞게 변경"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-11.apk"
 }
