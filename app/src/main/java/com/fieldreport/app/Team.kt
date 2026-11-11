@@ -83,19 +83,8 @@ private fun Offline() {
 
 @Composable
 fun TeamScreen() {
-    val ctx = LocalContext.current
     val d = Store.data
     val now = System.currentTimeMillis()
-    var newName by remember { mutableStateOf("") }
-    fun add(m: TeamMember) { val n = m.name.trim(); if (n.isNotEmpty() && d.team.none { it.name == n }) Store.update { it.copy(team = it.team + m.copy(name = n)) } }
-    // Picking a phone row returns that contact's name and number without asking for the whole address book.
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        r.data?.data?.let { uri ->
-            runCatching {
-                ctx.contentResolver.query(uri, arrayOf(Phone.DISPLAY_NAME, Phone.NUMBER), null, null, null)?.use { c -> if (c.moveToFirst()) add(TeamMember(c.getString(0) ?: "", c.getString(1) ?: "")) }
-            }
-        }
-    }
     // Who is out: everyone's trips when the server is connected, otherwise only mine.
     val me = d.myName.ifBlank { "나" }
     val out: Map<String, Trip> = if (Cloud.enabled)
@@ -112,11 +101,8 @@ fun TeamScreen() {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { KoreaMap(pins) }
             if (miss.isNotEmpty()) Text("지도에 표시하지 못한 위치: " + miss.entries.joinToString(", ") { "${it.key}(${it.value.place.ifBlank { "장소 미입력" }})" } + ". 장소에 시·군 이름을 넣으면 표시됩니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        SectionCard("내 이름") {
-            VoiceField(d.myName, { v -> Store.edit { it.copy(myName = v) } }, Modifier.fillMaxWidth(), placeholder = { Text("예: 이병화 선임") }, singleLine = true)
-        }
         SectionCard("팀원 ${roster.size}명") {
-            if (roster.isEmpty()) Text("아직 등록한 팀원이 없습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (roster.isEmpty()) Text("아직 등록한 팀원이 없습니다. 화면 오른쪽 위의 팀원 등록 버튼을 눌러 추가하세요.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             roster.forEach { m ->
                 val t = out[m.name]; val isManager = d.managerName == m.name
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -128,8 +114,35 @@ fun TeamScreen() {
                     TextButton(onClick = { Store.update { x -> x.copy(team = x.team - m, managerName = if (isManager) null else x.managerName) } }) { Text("삭제", color = MaterialTheme.colorScheme.error) }
                 }
             }
+        }
+    }
+}
+
+/** Team member registration, opened from the icon in the top bar while on the team tab. */
+@Composable
+fun TeamAddDialog(onClose: () -> Unit) {
+    val ctx = LocalContext.current
+    val d = Store.data
+    var newName by remember { mutableStateOf("") }
+    fun add(m: TeamMember) {
+        val n = m.name.trim()
+        if (n.isEmpty()) return
+        if (d.team.any { it.name == n }) { android.widget.Toast.makeText(ctx, "${n}님은 이미 등록돼 있습니다", android.widget.Toast.LENGTH_SHORT).show(); return }
+        Store.update { it.copy(team = it.team + m.copy(name = n)) }
+        android.widget.Toast.makeText(ctx, "${n}님을 등록했습니다", android.widget.Toast.LENGTH_SHORT).show()
+    }
+    // Picking a phone row returns that contact's name and number without asking for the whole address book.
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        r.data?.data?.let { uri ->
+            runCatching {
+                ctx.contentResolver.query(uri, arrayOf(Phone.DISPLAY_NAME, Phone.NUMBER), null, null, null)?.use { c -> if (c.moveToFirst()) add(TeamMember(c.getString(0) ?: "", c.getString(1) ?: "")) }
+            }
+        }
+    }
+    androidx.compose.material3.AlertDialog(onDismissRequest = onClose, title = { Text("팀원 등록") }, confirmButton = { TextButton(onClick = onClose) { Text("완료") } }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                VoiceField(newName, { newName = it }, Modifier.weight(1f), label = { Text("이름으로 추가") }, singleLine = true, onDone = { add(TeamMember(newName)); newName = "" })
+                VoiceField(newName, { newName = it }, Modifier.weight(1f), label = { Text("이름") }, singleLine = true, onDone = { add(TeamMember(newName)); newName = "" })
                 Button(onClick = { add(TeamMember(newName)); newName = "" }, enabled = newName.isNotBlank()) { Text("추가") }
             }
             OutlinedButton(onClick = { runCatching { pick.launch(Intent(Intent.ACTION_PICK, Phone.CONTENT_URI)) } }, modifier = Modifier.fillMaxWidth()) { Text("휴대폰 연락처에서 가져오기") }
@@ -138,8 +151,9 @@ fun TeamScreen() {
                 Text("이 앱을 쓰고 있는 사람", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 online.forEach { n -> TextButton(onClick = { add(TeamMember(n)) }) { Text("+ $n") } }
             }
+            Text("등록한 팀원 ${d.team.size}명: " + d.team.map { it.name }.sorted().joinToString(", ").ifBlank { "없음" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-    }
+    })
 }
 
 @Composable

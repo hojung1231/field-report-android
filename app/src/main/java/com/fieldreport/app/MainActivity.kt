@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.mutableStateOf
@@ -63,11 +64,15 @@ fun App() {
         var tab by rememberSaveable { mutableIntStateOf(0) }
         var settings by rememberSaveable { mutableStateOf(false) }
         if (settings) SettingsScreen { settings = false }
+        var addMember by rememberSaveable { mutableStateOf(false) }
+        if (addMember) TeamAddDialog { addMember = false }
         val tabs = listOf("외근" to Icons.Filled.Home, "회의" to Icons.Filled.Mic, "촬영" to Icons.Filled.PhotoCamera,
             "용차" to Icons.Filled.LocalShipping, "수신" to Icons.AutoMirrored.Filled.Send, "팀" to Icons.Filled.Groups)
         Scaffold(
             topBar = {
                 TopAppBar(title = { Text("외근 보고") }, actions = {
+                    // The team tab adds its own action to the bar: registering a team member.
+                    if (tab == 5) IconButton(onClick = { addMember = true }) { Icon(Icons.Filled.PersonAdd, contentDescription = "팀원 등록") }
                     IconButton(onClick = { settings = true }) { Icon(Icons.Filled.Settings, contentDescription = "설정") }
                     TextButton(onClick = { Store.undo() }, enabled = Store.undoCount > 0) {
                         Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
