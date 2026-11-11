@@ -37,6 +37,11 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -104,7 +109,8 @@ private class Gesture(val id: String, val before: List<Annotation>, val initial:
 private fun Context.activity(): Activity? { var c = this; while (c is ContextWrapper) { if (c is Activity) return c; c = c.baseContext }; return null }
 
 /**
- * Annotates one photo with circles, rectangles and arrows.
+ * Annotates one photo with circles, rectangles and arrows, in this app's own look.
+ * The drawing and selection behaviour follows the source editor; the layout does not.
  *
  * The first original is kept untouched; saving renders the shapes onto that original at full
  * resolution into a new file and stores the shape data beside it. Re-opening loads the original
@@ -133,25 +139,12 @@ fun PhotoEditor(photo: Photo, dir: File, onClose: () -> Unit) {
     val canvasOrigin = remember { arrayOf(Offset.Zero) }
     val trashBounds = remember { arrayOf(Rect.Zero) }
     val preview = remember { floatArrayOf(1f, 1f) } // canvas width and height in dp
-    val rail = rememberScrollState(); val railReset = remember { booleanArrayOf(false) }
-    val itemPx = with(density) { 60.dp.toPx() }
 
     fun change(value: List<Annotation>) { shapes = renumber(value); dirty = true }
     fun checkpoint(value: List<Annotation>) { history.addLast(value); if (history.size > 30) history.removeFirst(); undoCount = history.size }
     fun leave() { if (saving) return; if (dirty) confirmClose = true else onClose() }
 
-    // The editor works in landscape, like the source app; the previous orientation returns on close.
-    DisposableEffect(Unit) {
-        val act = ctx.activity(); val old = act?.requestedOrientation
-        act?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        onDispose { hold[0]?.cancel(); if (act != null && old != null) act.requestedOrientation = old }
-    }
-
-    // Tool rail: a wheel that snaps to the tool under the centre marker.
-    LaunchedEffect(rail) { snapshotFlow { rail.value }.collect { if (!railReset[0]) tool = TOOLS[(it / itemPx).roundToInt().coerceIn(0, 3)].first } }
-    LaunchedEffect(rail.isScrollInProgress) {
-        if (!rail.isScrollInProgress && !railReset[0]) { val target = ((rail.value / itemPx).roundToInt().coerceIn(0, 3) * itemPx).roundToInt(); if (abs(target - rail.value) > 1) rail.animateScrollTo(target) }
-    }
+    DisposableEffect(Unit) { onDispose { hold[0]?.cancel() } }
 
     fun inTrash(root: Offset) = trashBounds[0].contains(root)
 
@@ -168,9 +161,8 @@ fun PhotoEditor(photo: Photo, dir: File, onClose: () -> Unit) {
             // The first touch is the shape's start corner; for an arrow, its tail.
             shape = Annotation(newId(), shapes.size + 1, tool, color, p[0].x, p[0].y, clamp(p[0].x + .12), clamp(p[0].y + .12)); fresh = true
             change(shapes + shape)
-            // After adding an object the rail glides back to "select".
-            railReset[0] = true; tool = SELECT
-            scope.launch { rail.animateScrollTo(0); railReset[0] = false }
+            // After adding an object the tool returns to "select", so the next touch adjusts it.
+            tool = SELECT
         }
         if (shape == null) { selected = null; return }
         selected = shape.id; color = shape.color
@@ -230,96 +222,94 @@ fun PhotoEditor(photo: Photo, dir: File, onClose: () -> Unit) {
         }
     }
 
+    val cs = MaterialTheme.colorScheme
     Dialog(onDismissRequest = { leave() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(Color(0xFF101D18)).safeDrawingPadding()) {
+        Box(Modifier.fillMaxSize().background(cs.background).safeDrawingPadding()) {
             Column(Modifier.fillMaxSize()) {
-                Row(Modifier.fillMaxWidth().height(49.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(onClick = { leave() }) { Icon(Icons.Filled.Close, contentDescription = "사진 편집 닫기", tint = Color.White) }
-                    Text("사진 편집", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("개체 ${shapes.size}", Modifier.weight(1f), color = Color(0xFF9FB6A7), fontSize = 11.sp)
-                    IconButton(enabled = undoCount > 0 && !saving, onClick = { history.removeLastOrNull()?.let { change(it); undoCount = history.size; selected = null } }) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "개체 되돌리기", tint = if (undoCount > 0) Color.White else Color(0xFF56665B))
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { leave() }) { Icon(Icons.Filled.Close, contentDescription = "사진 편집 닫기") }
+                    Column(Modifier.weight(1f)) {
+                        Text("사진 편집", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("표시 ${shapes.size}개", fontSize = 12.sp, color = cs.onSurfaceVariant)
                     }
-                    COLORS.forEachIndexed { i, c ->
-                        Box(Modifier.size(26.dp).clip(CircleShape).background(parse(c)).border(if (color == c) 3.dp else 0.dp, if (color == c) Color.White else Color.Transparent, CircleShape)
-                            .clickable(onClickLabel = "${COLOR_NAMES[i]} 윤곽선") { color = c; selected?.let { id -> checkpoint(shapes); change(shapes.map { if (it.id == id) it.copy(color = c) else it }) } })
+                    TextButton(enabled = undoCount > 0 && !saving, onClick = { history.removeLastOrNull()?.let { change(it); undoCount = history.size; selected = null } }) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp)); Text(" 되돌리기")
                     }
-                    Box(Modifier.height(34.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFD9EF9B)).clickable(enabled = !saving) { save() }.padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
-                        if (saving) CircularProgressIndicator(Modifier.size(18.dp), color = Color(0xFF172A25), strokeWidth = 2.dp) else Text("저장", fontWeight = FontWeight.ExtraBold, color = Color(0xFF172A25))
+                    Button(onClick = { save() }, enabled = !saving, shape = RoundedCornerShape(14.dp)) {
+                        if (saving) CircularProgressIndicator(Modifier.size(18.dp), color = cs.onPrimary, strokeWidth = 2.dp) else Text("저장", fontWeight = FontWeight.Bold)
                     }
                 }
-                Row(Modifier.weight(1f).fillMaxWidth()) {
-                    BoxWithConstraints(Modifier.width(64.dp).fillMaxHeight()) {
-                        val pad = (maxHeight / 2 - 30.dp).coerceAtLeast(0.dp)
-                        Box(Modifier.align(Alignment.Center).padding(horizontal = 5.dp).fillMaxWidth().height(60.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF2B4637)).border(1.dp, Color(0xFF749758), RoundedCornerShape(10.dp)))
-                        Column(Modifier.fillMaxSize().verticalScroll(rail).padding(vertical = pad)) {
-                            TOOLS.forEachIndexed { n, (id, label) ->
-                                val on = tool == id; val tint = if (on) Color(0xFFD9EF9B) else Color(0xFF6F8779)
-                                Column(Modifier.fillMaxWidth().height(60.dp).clickable(onClickLabel = "$label 개체 선택") { railReset[0] = false; tool = id; scope.launch { rail.animateScrollTo((n * itemPx).roundToInt()) } },
-                                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                    Icon(when (id) { SELECT -> Icons.Filled.PanTool; KIND_CIRCLE -> Icons.Filled.RadioButtonUnchecked; KIND_RECTANGLE -> Icons.Filled.CropSquare; else -> Icons.Filled.ArrowUpward }, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-                                    Text(label, fontSize = 9.sp, color = tint)
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(cs.surfaceVariant).padding(8.dp), contentAlignment = Alignment.Center) {
+                    val fit = min(maxWidth.value / photoSize.first, maxHeight.value / photoSize.second)
+                    val wDp = max(1f, photoSize.first * fit); val hDp = max(1f, photoSize.second * fit)
+                    preview[0] = wDp; preview[1] = hDp
+                    Box(Modifier.size(wDp.dp, hDp.dp).background(Color.Black)
+                        .onGloballyPositioned { canvasOrigin[0] = it.positionInRoot() }
+                        .pointerInput(wDp, hDp) {
+                            awaitPointerEventScope {
+                                var active = false; var count = 0
+                                while (true) {
+                                    val ev = awaitPointerEvent()
+                                    val pressed = ev.changes.filter { it.pressed }
+                                    val pts = pressed.map { TouchPoint(it.id.value, clamp(it.position.x.toDouble() / size.width), clamp(it.position.y.toDouble() / size.height)) }
+                                    val root = canvasOrigin[0] + (pressed.firstOrNull() ?: ev.changes.first()).position
+                                    if (!active) { if (pts.isNotEmpty()) { active = true; count = pts.size; begin(pts) } }
+                                    else if (pts.isEmpty()) { active = false; count = 0; end(root) }
+                                    else {
+                                        // A finger lifting ends the two-finger part at once, so size and position cannot jump.
+                                        if (pts.size < count) { gesture[0]?.let { if (it.two && pts.size < 2) it.pair.finished = true } } else move(pts, root)
+                                        count = pts.size
+                                    }
+                                    ev.changes.forEach { it.consume() }
                                 }
                             }
-                        }
-                    }
-                    BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().padding(4.dp), contentAlignment = Alignment.Center) {
-                        val fit = min(maxWidth.value / photoSize.first, maxHeight.value / photoSize.second)
-                        val wDp = max(1f, photoSize.first * fit); val hDp = max(1f, photoSize.second * fit)
-                        preview[0] = wDp; preview[1] = hDp
-                        Box(Modifier.size(wDp.dp, hDp.dp).background(Color.Black)
-                            .onGloballyPositioned { canvasOrigin[0] = it.positionInRoot() }
-                            .pointerInput(wDp, hDp) {
-                                awaitPointerEventScope {
-                                    var active = false; var count = 0
-                                    while (true) {
-                                        val ev = awaitPointerEvent()
-                                        val pressed = ev.changes.filter { it.pressed }
-                                        val pts = pressed.map { TouchPoint(it.id.value, clamp(it.position.x.toDouble() / size.width), clamp(it.position.y.toDouble() / size.height)) }
-                                        val root = canvasOrigin[0] + (pressed.firstOrNull() ?: ev.changes.first()).position
-                                        if (!active) { if (pts.isNotEmpty()) { active = true; count = pts.size; begin(pts) } }
-                                        else if (pts.isEmpty()) { active = false; count = 0; end(root) }
-                                        else {
-                                            // A finger lifting ends the two-finger part at once, so size and position cannot jump.
-                                            if (pts.size < count) { gesture[0]?.let { if (it.two && pts.size < 2) it.pair.finished = true } } else move(pts, root)
-                                            count = pts.size
-                                        }
-                                        ev.changes.forEach { it.consume() }
+                        }) {
+                        AsyncImage(sourceFile, contentDescription = "사진 편집 캔버스", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                        Canvas(Modifier.fillMaxSize()) {
+                            val u = 1.dp.toPx(); val wPx = size.width; val hPx = size.height
+                            val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 12 * u; typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER }
+                            shapes.forEach { s ->
+                                val x1 = (s.x1 * wPx).toFloat(); val y1 = (s.y1 * hPx).toFloat(); val x2 = (s.x2 * wPx).toFloat(); val y2 = (s.y2 * hPx).toFloat()
+                                val left = min(x1, x2); val top = min(y1, y2); val w = max(u, abs(x2 - x1)); val h = max(u, abs(y2 - y1)); val c = parse(s.color)
+                                when (s.kind) {
+                                    KIND_CIRCLE -> drawOval(c, Offset(left, top), Size(w, h), style = Stroke(3 * u))
+                                    KIND_RECTANGLE -> drawRect(c, Offset(left, top), Size(w, h), style = Stroke(3 * u))
+                                    else -> {
+                                        drawLine(c, Offset(x1, y1), Offset(x2, y2), strokeWidth = 3 * u)
+                                        val angle = atan2(y2 - y1, x2 - x1); val head = 14 * u
+                                        drawPath(Path().apply { moveTo(x2, y2); lineTo(x2 - head * cos(angle - .45f), y2 - head * sin(angle - .45f)); lineTo(x2 - head * cos(angle + .45f), y2 - head * sin(angle + .45f)); close() }, c)
                                     }
                                 }
-                            }) {
-                            AsyncImage(sourceFile, contentDescription = "사진 편집 캔버스", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                            Canvas(Modifier.fillMaxSize()) {
-                                val u = 1.dp.toPx(); val wPx = size.width; val hPx = size.height
-                                val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 12 * u; typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER }
-                                shapes.forEach { s ->
-                                    val x1 = (s.x1 * wPx).toFloat(); val y1 = (s.y1 * hPx).toFloat(); val x2 = (s.x2 * wPx).toFloat(); val y2 = (s.y2 * hPx).toFloat()
-                                    val left = min(x1, x2); val top = min(y1, y2); val w = max(u, abs(x2 - x1)); val h = max(u, abs(y2 - y1)); val c = parse(s.color)
-                                    when (s.kind) {
-                                        KIND_CIRCLE -> drawOval(c, Offset(left, top), Size(w, h), style = Stroke(3 * u))
-                                        KIND_RECTANGLE -> drawRect(c, Offset(left, top), Size(w, h), style = Stroke(3 * u))
-                                        else -> {
-                                            drawLine(c, Offset(x1, y1), Offset(x2, y2), strokeWidth = 3 * u)
-                                            val angle = atan2(y2 - y1, x2 - x1); val head = 14 * u
-                                            drawPath(Path().apply { moveTo(x2, y2); lineTo(x2 - head * cos(angle - .45f), y2 - head * sin(angle - .45f)); lineTo(x2 - head * cos(angle + .45f), y2 - head * sin(angle + .45f)); close() }, c)
-                                        }
-                                    }
-                                    val cx = (left + 9 * u).coerceIn(13 * u, max(13 * u, wPx - 13 * u)); val cy = (top - 13 * u).coerceIn(13 * u, max(13 * u, hPx - 13 * u))
-                                    drawCircle(Color.White, 11 * u, Offset(cx, cy)); drawCircle(c, 11 * u, Offset(cx, cy), style = Stroke(2 * u))
-                                    text.color = c.toArgb(); drawContext.canvas.nativeCanvas.drawText(s.number.toString(), cx, cy + 4 * u, text)
-                                    if (selected == s.id) drawRect(Color.White, Offset(left - 5 * u, top - 5 * u), Size(w + 10 * u, h + 10 * u), style = Stroke(u, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4 * u, 4 * u))))
-                                }
+                                val cx = (left + 9 * u).coerceIn(13 * u, max(13 * u, wPx - 13 * u)); val cy = (top - 13 * u).coerceIn(13 * u, max(13 * u, hPx - 13 * u))
+                                drawCircle(Color.White, 11 * u, Offset(cx, cy)); drawCircle(c, 11 * u, Offset(cx, cy), style = Stroke(2 * u))
+                                text.color = c.toArgb(); drawContext.canvas.nativeCanvas.drawText(s.number.toString(), cx, cy + 4 * u, text)
+                                if (selected == s.id) drawRect(Color.White, Offset(left - 5 * u, top - 5 * u), Size(w + 10 * u, h + 10 * u), style = Stroke(u, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4 * u, 4 * u))))
                             }
                         }
                     }
                 }
-                Text("왼쪽 도구를 위아래로 선택 · 두 손가락으로 위치/크기 조절 · 개체를 길게 눌러 휴지통으로 이동", Modifier.fillMaxWidth().padding(vertical = 4.dp), color = Color(0xFF5E7A67), fontSize = 10.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Column(Modifier.fillMaxWidth().background(cs.surface).padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        TOOLS.forEachIndexed { i, (id, label) ->
+                            SegmentedButton(selected = tool == id, onClick = { tool = id }, shape = SegmentedButtonDefaults.itemShape(i, TOOLS.size),
+                                icon = { Icon(when (id) { SELECT -> Icons.Filled.PanTool; KIND_CIRCLE -> Icons.Filled.RadioButtonUnchecked; KIND_RECTANGLE -> Icons.Filled.CropSquare; else -> Icons.Filled.ArrowUpward }, contentDescription = null, modifier = Modifier.size(18.dp)) }) { Text(label, maxLines = 1) }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        COLORS.forEachIndexed { i, c ->
+                            Box(Modifier.size(30.dp).clip(CircleShape).background(parse(c)).border(if (color == c) 3.dp else 0.dp, if (color == c) cs.onSurface else Color.Transparent, CircleShape)
+                                .clickable(onClickLabel = "${COLOR_NAMES[i]} 윤곽선") { color = c; selected?.let { id -> checkpoint(shapes); change(shapes.map { if (it.id == id) it.copy(color = c) else it }) } })
+                        }
+                        Text(when { selected != null -> "끌어서 이동 · 두 손가락으로 크기 조절 · 길게 눌러 삭제"; tool == SELECT -> "표시를 눌러 선택하거나 위에서 도형을 고르세요"; else -> "사진 위를 누른 채 끌면 그려집니다" },
+                            Modifier.weight(1f), fontSize = 12.sp, lineHeight = 16.sp, color = cs.onSurfaceVariant)
+                    }
+                }
             }
-            if (trash) Column(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 28.dp).size(125.dp, 53.dp).clip(RoundedCornerShape(14.dp))
-                .background(if (drop) Color(0xDDB82E38) else Color(0xCC314B3C)).border(1.dp, if (drop) Color(0xFFFF8B8B) else Color(0xFFAFC0B7), RoundedCornerShape(14.dp))
-                .onGloballyPositioned { trashBounds[0] = it.boundsInRoot() }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = Color.White)
-                Text("여기로 끌어 삭제", fontSize = 10.sp, color = Color.White)
+            if (trash) Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 132.dp).clip(RoundedCornerShape(18.dp))
+                .background(if (drop) cs.error else cs.inverseSurface).onGloballyPositioned { trashBounds[0] = it.boundsInRoot() }.padding(horizontal = 26.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = if (drop) cs.onError else cs.inverseOnSurface)
+                Text(if (drop) "놓으면 삭제" else "여기로 끌어 삭제", fontWeight = FontWeight.Bold, color = if (drop) cs.onError else cs.inverseOnSurface)
             }
         }
     }

@@ -73,6 +73,13 @@ fun HomeScreen() {
                 TicketAction(if (trip.active) "종료" else "재개", if (trip.active) Icons.Filled.Flag else Icons.Filled.Replay) { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } },
                 TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(trips = d.trips.filter { it.id != trip.id }, currentTrip = null) } },
             ))
+            Store.data.meetings.filter { it.tripId == trip.id }.sortedByDescending { it.at }.forEach { m ->
+                MeetingCard(m, listOf(
+                    TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${m.title}]\n${m.raw}") },
+                    TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, m.raw, "회의록을 복사했습니다") },
+                    TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != m.id }) } },
+                ))
+            }
             OutlinedButton(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text("+ 새 출발 보고") }
         }
         val others = Store.data.trips.filter { it.id != trip?.id }.sortedByDescending { it.start }

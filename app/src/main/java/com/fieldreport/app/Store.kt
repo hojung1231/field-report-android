@@ -34,7 +34,10 @@ data class Place(val name: String, val addr: String = "", val person: String = "
 data class TeamMember(val name: String, val phone: String = "")
 
 @Serializable
-data class Meeting(val id: String, val tripId: String, val title: String, val at: Long, val raw: String = "")
+data class Meeting(val id: String, val tripId: String, val title: String, val at: Long, val raw: String = "", val summary: String = "")
+
+/** What a collapsed meeting card shows: the summary if one exists, otherwise the first 200 characters. */
+fun Meeting.preview(): String = summary.ifBlank { raw.trim().let { if (it.length > 200) it.take(200).trimEnd() + "…" else it } }
 
 @Serializable
 data class AppData(

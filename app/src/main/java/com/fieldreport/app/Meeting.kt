@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -76,13 +81,13 @@ fun MeetingScreen() {
             }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) { Text("회의 시작", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
             Text("${trip.place.ifBlank { "외근" }} 회의록 ${meetings.size}건", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (meetings.isEmpty()) Text("회의 시작을 누르고 녹음하면 말하는 내용이 바로 글로 기록됩니다. 한 외근에 회의록을 여러 개 만들 수 있습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            meetings.forEach { x ->
-                SectionCard {
-                    Column(Modifier.fillMaxWidth().clickable { openId = x.id }) {
-                        Text(x.title, fontWeight = FontWeight.SemiBold)
-                        Text("${fDate(x.at)} ${fTime(x.at)} · ${x.raw.length}자", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+            meetings.sortedByDescending { it.at }.forEach { x ->
+                MeetingCard(x, listOf(
+                    TicketAction("이어서 녹음", Icons.Filled.Mic) { openId = x.id },
+                    TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.raw}") },
+                    TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.raw, "회의록을 복사했습니다") },
+                    TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } },
+                ))
             }
         }
         return
@@ -90,7 +95,7 @@ fun MeetingScreen() {
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { stopRec(); openId = "" }) { Text("← 목록") }
+            TextButton(onClick = { stopRec(); openId = "" }) { Text("← 저장하고 목록") }
             OutlinedTextField(m.title, { v -> Store.edit { d -> d.copy(meetings = d.meetings.map { if (it.id == m.id) it.copy(title = v) else it }) } }, Modifier.weight(1f), singleLine = true, shape = RoundedCornerShape(14.dp))
         }
         Button(onClick = { if (recording) stopRec() else askMic.launch(Manifest.permission.RECORD_AUDIO) }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp),

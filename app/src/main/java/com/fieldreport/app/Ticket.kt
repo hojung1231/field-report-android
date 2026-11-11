@@ -99,22 +99,52 @@ fun TripTicket(t: Trip, actions: List<TicketAction>) {
                 Column { Label("목적"); Text(t.purpose.ifBlank { "—" }, fontSize = 16.sp, lineHeight = 22.sp) }
             }
         }
-        // Tear line with a punched notch at each edge, then the actions on the stub.
-        val bg = c.background; val dash = c.outlineVariant
-        Canvas(Modifier.fillMaxWidth().height(14.dp)) {
-            val y = size.height / 2; val r = 7.dp.toPx()
-            drawCircle(bg, r, Offset(0f, y)); drawCircle(bg, r, Offset(size.width, y))
-            drawLine(dash, Offset(r + 6.dp.toPx(), y), Offset(size.width - r - 6.dp.toPx(), y), strokeWidth = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(bottom = 4.dp)) {
-            actions.forEach { a ->
-                val tint = if (a.danger) c.error else c.onSurfaceVariant
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = a.onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(a.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
-                    Text(a.label, fontSize = 11.sp, color = tint, maxLines = 1)
-                }
+        TicketStub(actions)
+    }
+}
+
+/** The bottom edge shared by ticket-style cards: a notched tear line, then a compact row of actions. */
+@Composable
+fun TicketStub(actions: List<TicketAction>) {
+    val c = MaterialTheme.colorScheme
+    val bg = c.background; val dash = c.outlineVariant
+    Canvas(Modifier.fillMaxWidth().height(14.dp)) {
+        val y = size.height / 2; val r = 7.dp.toPx()
+        drawCircle(bg, r, Offset(0f, y)); drawCircle(bg, r, Offset(size.width, y))
+        drawLine(dash, Offset(r + 6.dp.toPx(), y), Offset(size.width - r - 6.dp.toPx(), y), strokeWidth = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+    }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp).padding(bottom = 4.dp)) {
+        actions.forEach { a ->
+            val tint = if (a.danger) c.error else c.onSurfaceVariant
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = a.onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(a.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                Text(a.label, fontSize = 11.sp, color = tint, maxLines = 1)
             }
         }
+    }
+}
+
+/** A meeting record as a card: a 200-character preview by default, the whole transcript when opened. */
+@Composable
+fun MeetingCard(m: Meeting, actions: List<TicketAction>) {
+    val c = MaterialTheme.colorScheme
+    var open by rememberSaveable(m.id) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.fillMaxHeight().background(c.primary).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(fTime(m.at), color = c.onPrimary, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
+                Text("회의", color = c.onPrimary, fontSize = 11.sp)
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                Text(m.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${fDate(m.at)} · ${m.raw.length}자" + if (open) " · 전체" else " · 미리보기", fontSize = 12.sp, color = c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            IconButton(onClick = { open = !open }) { Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (open) "접기" else "펼쳐 보기") }
+        }
+        // Collapsed: about 200 characters. Opened: the whole record.
+        Text((if (open) m.raw else m.preview()).ifBlank { "아직 기록된 내용이 없습니다." }, Modifier.fillMaxWidth().clickable { open = !open }.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
+            fontSize = if (open) 15.sp else 14.sp, lineHeight = if (open) 22.sp else 20.sp, color = if (open) c.onSurface else c.onSurfaceVariant)
+        TicketStub(actions)
     }
 }
 
