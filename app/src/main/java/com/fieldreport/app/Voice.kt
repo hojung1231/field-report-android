@@ -12,6 +12,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
@@ -52,9 +55,13 @@ fun VoiceField(
     value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
     label: @Composable (() -> Unit)? = null, placeholder: @Composable (() -> Unit)? = null,
     singleLine: Boolean = false, minLines: Int = 1, textStyle: TextStyle = LocalTextStyle.current, shape: Shape = RoundedCornerShape(14.dp),
+    onDone: (() -> Unit)? = null,
 ) {
     val speak = rememberVoiceInput { said -> onValueChange(if (value.isBlank()) said else "$value $said") }
     OutlinedTextField(value, onValueChange, modifier, label = label, placeholder = placeholder, singleLine = singleLine, minLines = minLines, textStyle = textStyle, shape = shape,
+        // With [onDone], the keyboard's enter key submits instead of doing nothing.
+        keyboardOptions = if (onDone != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
+        keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
         trailingIcon = { IconButton(onClick = speak) { Icon(Icons.Filled.Mic, contentDescription = "음성으로 입력", tint = MaterialTheme.colorScheme.primary) } })
 }
 

@@ -152,7 +152,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
                                 }
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                VoiceField(typedName, { typedName = it }, Modifier.weight(1f), label = { Text("직접 입력") }, singleLine = true)
+                                VoiceField(typedName, { typedName = it }, Modifier.weight(1f), label = { Text("직접 입력") }, singleLine = true, onDone = { add(typedName); typedName = "" })
                                 OutlinedButton(onClick = { add(typedName); typedName = "" }, enabled = typedName.isNotBlank()) { Text("추가") }
                             }
                             val roster = (Store.data.team.map { it.name } + Store.data.myName).filter { it.isNotBlank() && it !in chosen }.distinct().sorted()

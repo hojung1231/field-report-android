@@ -129,7 +129,7 @@ fun TeamScreen() {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                VoiceField(newName, { newName = it }, Modifier.weight(1f), label = { Text("이름으로 추가") }, singleLine = true)
+                VoiceField(newName, { newName = it }, Modifier.weight(1f), label = { Text("이름으로 추가") }, singleLine = true, onDone = { add(TeamMember(newName)); newName = "" })
                 Button(onClick = { add(TeamMember(newName)); newName = "" }, enabled = newName.isNotBlank()) { Text("추가") }
             }
             OutlinedButton(onClick = { runCatching { pick.launch(Intent(Intent.ACTION_PICK, Phone.CONTENT_URI)) } }, modifier = Modifier.fillMaxWidth()) { Text("휴대폰 연락처에서 가져오기") }
