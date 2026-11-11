@@ -57,13 +57,8 @@ fun HomeScreen() {
             Text("오늘은 어디로\n나가시나요?", fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
             Button(onClick = { creating = true }, modifier = Modifier.fillMaxWidth()) { Text("출발 보고 작성") }
         } else {
+            TripTicket(trip)
             SectionCard {
-                Text(if (trip.active) "외근 중 · ${fDate(trip.start)}" else "종료 · ${fDate(trip.start)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text("${fTime(trip.start)} → ${fTime(trip.end)}", fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                Text(trip.place.ifBlank { "장소 미입력" }, fontWeight = FontWeight.SemiBold)
-                Text("프로젝트 · ${trip.project}", color = MaterialTheme.colorScheme.primary)
-                Text("목적  ${trip.purpose}")
-                Text("인원  ${trip.people.ifBlank { "—" }}")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { shareText(ctx, notice(trip)) }, modifier = Modifier.weight(1f)) { Text("공지 공유") }
                     OutlinedButton(onClick = { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") }) { Text("복사") }
