@@ -101,7 +101,7 @@ fun DepartureForm(edit: Trip?, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
-                StepBar(step, listOf("프로젝트", "목적", "일시", "장소", "인원", "확인"), Modifier.fillMaxWidth())
+                StepBar(step, listOf("프로젝트", "목적", "일시", "장소", "인원", "확인"), Modifier.fillMaxWidth()) { i -> if (i < step || fromReview) step = i }
                 Row(Modifier.padding(top = 10.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(QUESTIONS[step], Modifier.weight(1f), fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold)
                     IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "닫기") }

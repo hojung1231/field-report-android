@@ -22,6 +22,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -48,6 +51,14 @@ fun CameraScreen() {
     var pendingFile by rememberSaveable { mutableStateOf("") }
     var pendingParent by rememberSaveable { mutableStateOf("") }
     var viewing by rememberSaveable { mutableStateOf("") }
+    var editing by rememberSaveable { mutableStateOf("") }
+    // Files no photo refers to any more (replaced edits, deleted photos) are removed once undo can no longer bring them back.
+    LaunchedEffect(Unit) {
+        if (Store.undoCount == 0) withContext(Dispatchers.IO) {
+            val keep = Store.data.photos.flatMap { listOfNotNull(it.file, it.original) }.toSet(); val old = System.currentTimeMillis() - 10 * 60_000
+            dir.listFiles()?.filter { it.name !in keep && it.lastModified() < old }?.forEach { it.delete() }
+        }
+    }
 
     // The system camera app takes the picture, so the phone's full camera pipeline is used.
     val take = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
@@ -121,9 +132,11 @@ fun CameraScreen() {
                 Text("밀기: ↑ 세부 · ↓ 전체 · → 이전 · ← 다음", Modifier.fillMaxWidth().padding(6.dp), color = Color(0xB3FFFFFF), style = MaterialTheme.typography.labelSmall)
                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { shoot(cur.id) }, modifier = Modifier.weight(1f)) { Text("세부 사진 촬영") }
+                    OutlinedButton(onClick = { editing = cur.id }) { Text(if (cur.annotations.isEmpty()) "편집" else "편집 · 표시 ${cur.annotations.size}", color = Color.White) }
                     OutlinedButton(onClick = { Store.update { d -> d.copy(photos = d.photos.filter { it.id != cur.id }) }; viewing = parent?.id ?: "" }) { Text("삭제", color = Color.White) }
                 }
             }
         }
     }
+    Store.data.photos.firstOrNull { it.id == editing }?.let { p -> PhotoEditor(p, dir) { editing = "" } }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
@@ -55,16 +56,16 @@ fun SectionCard(title: String? = null, content: @Composable () -> Unit) {
     }
 }
 
-/** Segmented progress bar with each step's name written inside its segment. */
+/** Segmented progress bar with each step's name written inside its segment; tapping a segment calls [onStep]. */
 @Composable
-fun StepBar(step: Int, labels: List<String>, modifier: Modifier = Modifier) {
+fun StepBar(step: Int, labels: List<String>, modifier: Modifier = Modifier, onStep: ((Int) -> Unit)? = null) {
     val c = MaterialTheme.colorScheme
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         labels.forEachIndexed { i, label ->
             val bg = when { i == step -> c.primary; i < step -> c.primary.copy(alpha = .22f); else -> c.surfaceVariant }
             val fg = when { i == step -> c.onPrimary; i < step -> c.primary; else -> c.onSurfaceVariant }
             // Wider segments for longer names so every label fits on one line.
-            Box(Modifier.weight(label.length + 1.5f).height(28.dp).clip(CircleShape).background(bg), contentAlignment = Alignment.Center) {
+            Box(Modifier.weight(label.length + 1.5f).height(30.dp).clip(CircleShape).background(bg).clickable(enabled = onStep != null && i != step) { onStep?.invoke(i) }, contentAlignment = Alignment.Center) {
                 Text(label, color = fg, fontSize = 11.sp, fontWeight = if (i == step) FontWeight.Bold else FontWeight.Medium, maxLines = 1, softWrap = false)
             }
         }

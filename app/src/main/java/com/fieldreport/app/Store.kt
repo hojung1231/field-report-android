@@ -21,7 +21,11 @@ data class Trip(
 
 /** A photo. `parent` links a detail shot (rank 2+) to the overview it belongs to. */
 @Serializable
-data class Photo(val id: String, val tripId: String, val parent: String? = null, val file: String, val at: Long, val memo: String = "")
+data class Photo(
+    val id: String, val tripId: String, val parent: String? = null, val file: String, val at: Long, val memo: String = "",
+    /** The untouched first original once the photo has been edited; [file] is then the rendered result. */
+    val original: String? = null, val annotations: List<Annotation> = emptyList(),
+)
 
 @Serializable
 data class Place(val name: String, val addr: String = "", val person: String = "", val phone: String = "")

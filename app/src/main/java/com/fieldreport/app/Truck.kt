@@ -140,7 +140,7 @@ fun TruckScreen() {
         Store.update { d -> d.copy(places = seen + d.places.filter { old -> seen.none { it.name == old.name && it.person == old.person } }) }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
-        StepBar(s.step, TRUCK_STEPS, Modifier.fillMaxWidth())
+        StepBar(s.step, TRUCK_STEPS, Modifier.fillMaxWidth()) { i -> if (i < s.step || s.fromReview) s.step = i }
         Row(Modifier.padding(top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(TRUCK_QUESTIONS[s.step], Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             TextButton(onClick = { s.undo() }, enabled = s.canUndo) { Text("↶ 되돌리기") }

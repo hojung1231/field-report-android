@@ -15,8 +15,8 @@ android {
         applicationId = "com.fieldreport.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.5.0"
+        versionCode = 10
+        versionName = "0.6.0"
     }
     // Android only installs an update over an app signed with the same key, so every published
     // build must use the team's one key. Keep app/debug.keystore out of the repo and put it in
@@ -44,6 +44,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    testImplementation("junit:junit:4.13.2")
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
