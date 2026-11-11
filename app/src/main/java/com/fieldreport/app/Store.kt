@@ -36,10 +36,23 @@ data class Place(val name: String, val addr: String = "", val person: String = "
 data class TeamMember(val name: String, val phone: String = "")
 
 @Serializable
-data class Meeting(val id: String, val tripId: String, val title: String, val at: Long, val raw: String = "", val summary: String = "")
+data class Meeting(
+    val id: String, val tripId: String, val title: String, val at: Long,
+    /** The original speech-to-text record; never changed by the AI. */
+    val raw: String = "",
+    /** AI results kept beside the original: a summary of about 200 characters and a tidied full version. */
+    val summary: String = "", val organized: String = "",
+    /** Which version the card is showing. */
+    val showAi: Boolean = false,
+) {
+    val hasAi: Boolean get() = summary.isNotBlank() || organized.isNotBlank()
+}
 
-/** What a collapsed meeting card shows: the summary if one exists, otherwise the first 200 characters. */
-fun Meeting.preview(): String = summary.ifBlank { raw.trim().let { if (it.length > 200) it.take(200).trimEnd() + "…" else it } }
+/** What a collapsed meeting card shows: the AI summary when that version is switched on, otherwise the first 200 characters of the original. */
+fun Meeting.preview(): String = if (showAi && summary.isNotBlank()) summary else raw.trim().let { if (it.length > 200) it.take(200).trimEnd() + "…" else it }
+
+/** What an expanded meeting card shows: the tidied version when switched on, otherwise the original. */
+fun Meeting.full(): String = if (showAi && hasAi) organized.ifBlank { summary } else raw
 
 @Serializable
 data class AppData(

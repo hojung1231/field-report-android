@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -149,8 +150,9 @@ fun TicketStub(actions: List<TicketAction>) {
 }
 
 /**
- * A meeting record as a card: a preview of about 200 characters by default (the AI summary when
- * there is one), the whole record when tapped open. A long press opens a menu with the actions.
+ * A meeting record as a card: a preview of about 200 characters by default, the whole record when
+ * tapped open. Its AI button tidies and summarises on first press, then flips between the original
+ * and the saved AI version. A long press opens a menu with the actions.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -170,12 +172,19 @@ fun MeetingCard(m: Meeting, actions: List<TicketAction>) {
                 }
                 Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 8.dp)) {
                     Text(m.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${fDate(m.at)} · ${m.raw.length}자 · " + when { open -> "전체"; summarizing -> "AI 요약 중…"; m.summary.isNotBlank() -> "AI 요약"; else -> "앞부분" },
-                        fontSize = 12.sp, color = if (summarizing) c.primary else c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${fDate(m.at)} · " + (if (m.showAi && m.hasAi) "AI 정리본" else "원본 ${m.raw.length}자") + if (open) " · 전체" else " · 미리보기",
+                        fontSize = 12.sp, color = if (m.showAi && m.hasAi) c.primary else c.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (open) "접기" else "펼쳐 보기", modifier = Modifier.padding(end = 12.dp))
+                // One button: first press runs the AI, later presses flip between the original and the saved AI version.
+                Row(Modifier.padding(end = 8.dp).clip(RoundedCornerShape(12.dp)).background(if (m.showAi && m.hasAi) c.primary else c.primary.copy(alpha = .12f))
+                    .clickable(enabled = !summarizing) { if (!m.hasAi) Summarizer.run(m.id) else Store.edit { d -> d.copy(meetings = d.meetings.map { if (it.id == m.id) it.copy(showAi = !it.showAi) else it }) } }
+                    .padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val fg = if (m.showAi && m.hasAi) c.onPrimary else c.primary
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
+                    Text(when { summarizing -> " 정리 중…"; !m.hasAi -> " AI 요약"; m.showAi -> " 원본 보기"; else -> " AI 요약 보기" }, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
             }
-            Text((if (open) m.raw else m.preview()).ifBlank { "기록된 내용이 없습니다." }, Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 14.dp),
+            Text((if (open) m.full() else m.preview()).ifBlank { "기록된 내용이 없습니다." }, Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 14.dp),
                 fontSize = if (open) 15.sp else 14.sp, lineHeight = if (open) 22.sp else 20.sp, color = if (open) c.onSurface else c.onSurfaceVariant)
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

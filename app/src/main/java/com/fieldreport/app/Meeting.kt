@@ -74,10 +74,9 @@ fun MeetingScreen() {
         val now = System.currentTimeMillis()
         val id = if (into.isNotEmpty() && Store.data.meetings.any { it.id == into }) into else newId()
         Store.update { d ->
-            if (id == into) d.copy(meetings = d.meetings.map { if (it.id == id) it.copy(raw = (it.raw + " " + text).trim(), summary = "") else it })
+            if (id == into) d.copy(meetings = d.meetings.map { if (it.id == id) it.copy(raw = (it.raw + " " + text).trim(), summary = "", organized = "", showAi = false) else it })
             else d.copy(meetings = d.meetings + Meeting(id, tripId, "회의 ${d.meetings.count { it.tripId == tripId } + 1} · ${fTime(now)}", now, text))
         }
-        Summarizer.summarize(id)
     }
     // Leaving the tab mid-recording keeps what was said.
     DisposableEffect(Unit) { onDispose { if (recording) finish(true) else dictation.stop() } }
@@ -99,9 +98,9 @@ fun MeetingScreen() {
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("${trip.place.ifBlank { "외근" }} 회의록 ${meetings.size}건", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = c.onSurfaceVariant)
-            Text(if (Llm.configured) "AI 요약 켜짐" else "길게 눌러 공유·삭제", style = MaterialTheme.typography.labelMedium, color = if (Llm.configured) c.primary else c.onSurfaceVariant)
+            Text(if (Llm.configured) "LLM 연결됨" else "길게 눌러 공유·삭제", style = MaterialTheme.typography.labelMedium, color = if (Llm.configured) c.primary else c.onSurfaceVariant)
         }
-        if (Summarizer.lastError.isNotBlank()) Text("AI 요약 실패: ${Summarizer.lastError}", color = c.error, style = MaterialTheme.typography.bodySmall)
+        if (Summarizer.lastError.isNotBlank()) Text("AI 정리: ${Summarizer.lastError}", color = c.error, style = MaterialTheme.typography.bodySmall)
         // Cards scroll inside their own area so the microphone stays put at the bottom, within thumb reach.
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (meetings.isEmpty() && !recording) Text("아래 마이크를 누르면 바로 녹음이 시작되고, 말하는 내용이 글로 바뀝니다. 한 번 더 누르면 회의 카드로 저장됩니다.", color = c.onSurfaceVariant)
@@ -110,9 +109,9 @@ fun MeetingScreen() {
                     SwipeRightToDelete(onDelete = { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } }) {
                         MeetingCard(x, listOfNotNull(
                             TicketAction("이어서 녹음", Icons.Filled.Mic) { if (!recording) { target = x.id; askMic.launch(Manifest.permission.RECORD_AUDIO) } },
-                            if (Llm.configured) TicketAction(if (x.summary.isBlank()) "AI로 요약" else "다시 요약", Icons.Filled.AutoAwesome) { Summarizer.summarize(x.id) } else null,
-                            TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.raw}") },
-                            TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.raw, "회의록을 복사했습니다") },
+                            if (x.hasAi) TicketAction("AI 다시 정리", Icons.Filled.AutoAwesome) { Summarizer.run(x.id) } else null,
+                            TicketAction("공유", Icons.Filled.Share) { shareText(ctx, "[${x.title}]\n${x.full()}") },
+                            TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, x.full(), if (x.showAi && x.hasAi) "AI 정리본을 복사했습니다" else "회의록 원본을 복사했습니다") },
                             TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(meetings = d.meetings.filter { it.id != x.id }) } },
                         ))
                     }
