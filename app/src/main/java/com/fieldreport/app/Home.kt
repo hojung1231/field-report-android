@@ -77,15 +77,15 @@ fun HomeScreen() {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
                 Text("현재 외근", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                if (Store.data.trips.size > 1) Text("· 회의와 사진이 이 외근에 저장됩니다", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("· 길게 누르면 공유·수정 메뉴", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Box(Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp)).padding(2.5.dp)) {
                 TripTicket(trip, listOfNotNull(
-                    if (Cloud.enabled) TicketAction("팀장 보고", Icons.AutoMirrored.Filled.Send) { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() } else null,
-                    TicketAction("공유", Icons.Filled.Share) { shareText(ctx, notice(trip)) },
-                    TicketAction("복사", Icons.Filled.ContentCopy) { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") },
+                    if (Cloud.enabled) TicketAction("팀장에게 보고", Icons.AutoMirrored.Filled.Send) { Toast.makeText(ctx, Cloud.sendReport(trip), Toast.LENGTH_SHORT).show() } else null,
+                    TicketAction("공지 공유", Icons.Filled.Share) { shareText(ctx, notice(trip)) },
+                    TicketAction("공지 복사", Icons.Filled.ContentCopy) { copyText(ctx, notice(trip), "외근 공지를 복사했습니다") },
                     TicketAction("수정", Icons.Filled.Edit) { editing = trip },
-                    TicketAction(if (trip.active) "종료" else "재개", if (trip.active) Icons.Filled.Flag else Icons.Filled.Replay) { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } },
+                    TicketAction(if (trip.active) "외근 종료" else "다시 진행", if (trip.active) Icons.Filled.Flag else Icons.Filled.Replay) { Store.update { d -> d.copy(trips = d.trips.map { if (it.id == trip.id) it.copy(active = !it.active) else it }) } },
                     TicketAction("삭제", Icons.Filled.DeleteOutline, danger = true) { Store.update { d -> d.copy(trips = d.trips.filter { it.id != trip.id }, currentTrip = null) } },
                 ))
             }

@@ -17,6 +17,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.remember
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,9 +51,10 @@ import androidx.compose.ui.unit.sp
 class TicketAction(val label: String, val icon: ImageVector, val danger: Boolean = false, val onClick: () -> Unit)
 
 /**
- * The current trip in the shape of a rail ticket. Collapsed by default to a thin strip; the
- * actions sit on the ticket's own bottom edge so they read as part of it.
+ * The current trip in the shape of a rail ticket. Collapsed by default to a thin strip; tapping
+ * expands it and a long press opens a menu with the actions.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TripTicket(t: Trip, actions: List<TicketAction>) {
     val c = MaterialTheme.colorScheme
@@ -57,9 +66,14 @@ fun TripTicket(t: Trip, actions: List<TicketAction>) {
         else -> "종료 시간 지남" to Color(0xFFB86E00)
     }
     var open by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)) {
+    var menu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    // Tap expands or collapses; a long press brings up the actions, which stay out of sight otherwise.
+    Box {
+    Column(Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(20.dp)).background(c.surface)
+        .combinedClickable(onClick = { open = !open }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "외근 메뉴 열기")) {
         if (!open) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clickable { open = true }, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.fillMaxHeight().background(tone).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Text(status, color = Color.White, fontSize = 11.sp)
@@ -71,7 +85,7 @@ fun TripTicket(t: Trip, actions: List<TicketAction>) {
                 IconButton(onClick = { open = true }) { Icon(Icons.Filled.ExpandMore, contentDescription = "펼쳐 보기") }
             }
         } else {
-            Row(Modifier.fillMaxWidth().background(tone).clickable { open = false }.padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().background(tone).padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(status, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
                 Text(fDate(t.start), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 IconButton(onClick = { open = false }) { Icon(Icons.Filled.ExpandLess, contentDescription = "접기", tint = Color.White) }
@@ -102,7 +116,13 @@ fun TripTicket(t: Trip, actions: List<TicketAction>) {
                 Column { Label("목적"); Text(t.purpose.ifBlank { "—" }, fontSize = 16.sp, lineHeight = 22.sp) }
             }
         }
-        TicketStub(actions)
+    }
+    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+        actions.forEach { a ->
+            val tint = if (a.danger) c.error else c.onSurface
+            DropdownMenuItem(text = { Text(a.label, color = tint) }, leadingIcon = { Icon(a.icon, contentDescription = null, tint = tint) }, onClick = { menu = false; a.onClick() })
+        }
+    }
     }
 }
 
