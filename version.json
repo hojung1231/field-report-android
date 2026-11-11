@@ -1,6 +1,6 @@
 {
-  "versionCode": 19,
-  "versionName": "0.7.2",
-  "notes": ["외근 탭에서 현재 외근을 테두리와 표시로 강조", "회의 카드는 회의 탭에만 표시"],
-  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-19.apk"
+  "versionCode": 20,
+  "versionName": "0.7.3",
+  "notes": ["회의 카드를 누르면 녹음과 글 수정 화면으로 다시 들어감"],
+  "url": "https://raw.githubusercontent.com/hojung1231/field-report-android/apk/field-report-20.apk"
 }
