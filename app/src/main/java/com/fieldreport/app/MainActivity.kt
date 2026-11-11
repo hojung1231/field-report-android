@@ -56,6 +56,7 @@ private val Dark = darkColorScheme(primary = Color(0xFF6C93FF), background = Col
 @Composable
 fun App() {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light) {
+        UpdateGate()
         var tab by rememberSaveable { mutableIntStateOf(0) }
         val tabs = listOf("외근" to Icons.Filled.Home, "회의" to Icons.Filled.Mic, "촬영" to Icons.Filled.PhotoCamera,
             "용차" to Icons.Filled.LocalShipping, "수신" to Icons.AutoMirrored.Filled.Send, "팀" to Icons.Filled.Groups)

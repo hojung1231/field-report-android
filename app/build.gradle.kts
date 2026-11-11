@@ -15,8 +15,16 @@ android {
         applicationId = "com.fieldreport.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.3.1"
+        versionCode = 8
+        versionName = "0.4.0"
+    }
+    // Android only installs an update over an app signed with the same key, so every published
+    // build must use the team's one key. Keep app/debug.keystore out of the repo and put it in
+    // place before building a version to publish; without it Gradle falls back to this machine's key.
+    if (file("debug.keystore").exists()) signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore"); storePassword = "android"; keyAlias = "androiddebugkey"; keyPassword = "android"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
